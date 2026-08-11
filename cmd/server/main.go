@@ -74,8 +74,8 @@ func main() {
 		}
 	}
 
-	// --- Session Store ---
-	store := session.New()
+	// --- Session Store (Postgres-backed) ---
+	store := session.New(pool)
 
 	// --- Flash Store ---
 	flashStore := inertia.NewMemoryFlashStore()

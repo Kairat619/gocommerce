@@ -1,4 +1,4 @@
-.PHONY: dev build run test lint fmt vet docker-up docker-down sqlc migrate seed clean help
+.PHONY: dev build run test lint fmt vet docker-up docker-down sqlc migrate seed clean help railway-login railway-up railway-logs
 
 # Default target
 help: ## Show this help
@@ -116,3 +116,14 @@ production: ## Build for production
 	CGO_ENABLED=0 go build -ldflags="-s -w" -o server.exe ./cmd/server/
 	cd frontend && npm run build
 	@echo "Production build complete. Run: ./server.exe"
+
+# Deployment (Railway) — see README.md "Deploying to Railway" for full steps.
+# Requires the Railway CLI: npm i -g @railway/cli
+railway-login: ## Authenticate the Railway CLI
+	railway login
+
+railway-up: ## Build & deploy the current directory to the linked Railway service
+	railway up
+
+railway-logs: ## Tail logs of the linked Railway service
+	railway logs

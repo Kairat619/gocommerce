@@ -4,127 +4,133 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
+	"log"
 	"net/http"
-	"sync"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type key string
 
 const sessionKey key = "session"
 
-// Store is a cookie-based session store for development.
-// In production, swap this for a server-side store (Redis, Postgres, etc.)
+// sessionTTL is how long a session lives before it is considered expired.
+const sessionTTL = 24 * time.Hour
+
+// Store is a Postgres-backed session store. Sessions persist across restarts
+// and can be shared across multiple app replicas.
 type Store struct {
-	mu       sync.RWMutex
-	sessions map[string]map[string]any
+	pool *pgxpool.Pool
 }
 
+// Session is a per-request handle to a single session row. It caches the
+// session data map for the lifetime of the request and writes changes back to
+// Postgres immediately.
 type Session struct {
-	id          string
-	store       *Store
-	values      map[string]any
-	regenerated bool
+	id     string
+	store  *Store
+	values map[string]any
 }
 
-// New creates a new session store.
-func New() *Store {
-	return &Store{
-		sessions: make(map[string]map[string]any),
+// New creates a new Postgres-backed session store.
+func New(pool *pgxpool.Pool) *Store {
+	return &Store{pool: pool}
+}
+
+// load reads a session's data map from Postgres. A missing or expired session
+// yields an empty map.
+func (s *Store) load(ctx context.Context, sessionID string) map[string]any {
+	values := make(map[string]any)
+	if s == nil || s.pool == nil {
+		return values
 	}
-}
 
-func (s *Store) getOrCreate(sessionID string) map[string]any {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if data, ok := s.sessions[sessionID]; ok {
-		return data
+	var raw []byte
+	err := s.pool.QueryRow(ctx,
+		`SELECT data FROM sessions WHERE id = $1 AND expires_at > NOW()`,
+		sessionID,
+	).Scan(&raw)
+	if err != nil {
+		// No row (or a transient error): treat as an empty session.
+		return values
 	}
-	s.sessions[sessionID] = make(map[string]any)
-	return s.sessions[sessionID]
-}
 
-// Get retrieves a value from the session.
-func (s *Store) Get(sessionID string, key string) (any, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	data, ok := s.sessions[sessionID]
-	if !ok {
-		return nil, false
-	}
-	val, ok := data[key]
-	return val, ok
-}
-
-// Set stores a value in the session.
-func (s *Store) Set(sessionID string, key string, value any) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if _, ok := s.sessions[sessionID]; !ok {
-		s.sessions[sessionID] = make(map[string]any)
-	}
-	s.sessions[sessionID][key] = value
-}
-
-// Delete removes a value from the session.
-func (s *Store) Delete(sessionID string, key string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if data, ok := s.sessions[sessionID]; ok {
-		delete(data, key)
-	}
-}
-
-// Destroy wipes the entire session.
-func (s *Store) Destroy(sessionID string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.sessions, sessionID)
-}
-
-// Regenerate creates a new session ID and migrates data from the old session.
-func (s *Store) Regenerate(oldID string) (string, map[string]any) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	newID := generateSecureID()
-
-	// Copy data from old session
-	oldData, ok := s.sessions[oldID]
-	if ok {
-		newData := make(map[string]any, len(oldData))
-		for k, v := range oldData {
-			newData[k] = v
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &values); err != nil {
+			log.Printf("session: failed to decode data for %s: %v", sessionID, err)
+			return make(map[string]any)
 		}
-		s.sessions[newID] = newData
-	} else {
-		s.sessions[newID] = make(map[string]any)
+	}
+	return values
+}
+
+// persist upserts a session's data map into Postgres.
+func (s *Store) persist(ctx context.Context, sessionID string, values map[string]any) {
+	if s == nil || s.pool == nil {
+		return
 	}
 
-	// Remove old session
-	delete(s.sessions, oldID)
+	raw, err := json.Marshal(values)
+	if err != nil {
+		log.Printf("session: failed to encode data for %s: %v", sessionID, err)
+		return
+	}
 
-	return newID, s.sessions[newID]
+	_, err = s.pool.Exec(ctx,
+		`INSERT INTO sessions (id, data, expires_at)
+		 VALUES ($1, $2, NOW() + $3::interval)
+		 ON CONFLICT (id) DO UPDATE
+		 SET data = EXCLUDED.data, expires_at = EXCLUDED.expires_at`,
+		sessionID, raw, sessionTTL.String(),
+	)
+	if err != nil {
+		log.Printf("session: failed to persist %s: %v", sessionID, err)
+	}
+}
+
+// remove deletes a session row from Postgres.
+func (s *Store) remove(ctx context.Context, sessionID string) {
+	if s == nil || s.pool == nil {
+		return
+	}
+	if _, err := s.pool.Exec(ctx, `DELETE FROM sessions WHERE id = $1`, sessionID); err != nil {
+		log.Printf("session: failed to delete %s: %v", sessionID, err)
+	}
+}
+
+// DeleteExpired removes expired session rows. Safe to call periodically.
+func (s *Store) DeleteExpired(ctx context.Context) error {
+	if s == nil || s.pool == nil {
+		return nil
+	}
+	_, err := s.pool.Exec(ctx, `DELETE FROM sessions WHERE expires_at <= NOW()`)
+	return err
 }
 
 // Get retrieves a value from the session.
 func (sess *Session) Get(key string) (any, bool) {
-	return sess.store.Get(sess.id, key)
+	val, ok := sess.values[key]
+	return val, ok
 }
 
-// Set stores a value in the session.
+// Set stores a value in the session and persists it.
 func (sess *Session) Set(key string, value any) {
-	sess.store.Set(sess.id, key, value)
+	sess.values[key] = value
+	sess.store.persist(context.Background(), sess.id, sess.values)
 }
 
-// Delete removes a value from the session.
+// Delete removes a value from the session and persists the change.
 func (sess *Session) Delete(key string) {
-	sess.store.Delete(sess.id, key)
+	delete(sess.values, key)
+	sess.store.persist(context.Background(), sess.id, sess.values)
 }
 
 // Destroy wipes the entire session.
 func (sess *Session) Destroy() {
-	sess.store.Destroy(sess.id)
+	sess.values = make(map[string]any)
+	sess.store.remove(context.Background(), sess.id)
 }
 
 // ID returns the session ID.
@@ -132,17 +138,30 @@ func (sess *Session) ID() string {
 	return sess.id
 }
 
-// Regenerate creates a new session ID and migrates data.
+// Regenerate creates a new session ID, migrates data to it, and removes the old
+// row. Returns the new ID.
 func (sess *Session) Regenerate() string {
-	newID, _ := sess.store.Regenerate(sess.id)
+	ctx := context.Background()
+	oldID := sess.id
+	newID := generateSecureID()
+
+	newValues := make(map[string]any, len(sess.values))
+	for k, v := range sess.values {
+		newValues[k] = v
+	}
+
+	sess.store.persist(ctx, newID, newValues)
+	sess.store.remove(ctx, oldID)
+
 	sess.id = newID
+	sess.values = newValues
 	return newID
 }
 
 // RegenerateWithCookie creates a new session ID, migrates data, and updates the cookie.
 func (sess *Session) RegenerateWithCookie(w http.ResponseWriter) string {
 	newID := sess.Regenerate()
-	setSessionCookie(w, newID, 24*time.Hour)
+	setSessionCookie(w, newID, sessionTTL)
 	return newID
 }
 
@@ -161,7 +180,7 @@ func Middleware(store *Store) func(http.Handler) http.Handler {
 
 			if err != nil || cookie.Value == "" {
 				sessionID = generateSecureID()
-				setSessionCookie(w, sessionID, 24*time.Hour)
+				setSessionCookie(w, sessionID, sessionTTL)
 			} else {
 				sessionID = cookie.Value
 			}
@@ -169,7 +188,7 @@ func Middleware(store *Store) func(http.Handler) http.Handler {
 			sess := &Session{
 				id:     sessionID,
 				store:  store,
-				values: store.getOrCreate(sessionID),
+				values: store.load(r.Context(), sessionID),
 			}
 
 			ctx := context.WithValue(r.Context(), sessionKey, sess)
