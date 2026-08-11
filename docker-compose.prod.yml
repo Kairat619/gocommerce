@@ -1,0 +1,35 @@
+services:
+  app:
+    build: .
+    container_name: gocommerce-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - APP_ENV=production
+      - PORT=8080
+      - DATABASE_URL=postgres://gocommerce:gocommerce@db:5432/gocommerce?sslmode=disable
+      - SESSION_KEY=${SESSION_KEY:-change-this-in-production}
+      - SEED=false
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: gocommerce-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gocommerce
+      POSTGRES_PASSWORD: gocommerce
+      POSTGRES_DB: gocommerce
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gocommerce"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

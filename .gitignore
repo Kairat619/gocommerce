@@ -1,0 +1,41 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+gocommerce
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# Build
+public/build/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Local artifacts / junk
+cookies.txt
+c2.txt
+c3.txt
+nul
+D:Gemini*/

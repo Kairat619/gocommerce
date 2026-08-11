@@ -1,0 +1,12 @@
+node_modules
+frontend/node_modules
+frontend/.vite
+public/build
+.git
+.gitignore
+*.md
+.env
+.env.*
+coverage.out
+coverage.html
+server.exe
