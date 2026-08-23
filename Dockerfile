@@ -15,7 +15,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/server ./cmd/serv
 # Frontend build stage
 FROM node:20-alpine AS frontend
 
-WORKDIR /app
+WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
 RUN npm ci
