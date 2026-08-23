@@ -33,8 +33,7 @@ WORKDIR /app
 COPY --from=builder /app/server ./
 COPY --from=frontend /app/public/build ./public/build
 COPY --from=frontend /app/frontend/index.html ./
-COPY --from=frontend /app/public/robots.txt ./public/
-COPY --from=frontend /app/public/favicon.ico ./public/
+COPY --from=frontend /app/frontend/public/ ./public/
 
 RUN mkdir -p /app/sql/schema
 
