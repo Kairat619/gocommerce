@@ -147,6 +147,10 @@ func main() {
 	fileServer := http.FileServer(http.Dir("public"))
 	r.Handle("/favicon.ico", fileServer)
 	r.Handle("/robots.txt", fileServer)
+	r.Handle("/build/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		fileServer.ServeHTTP(w, r)
+	}))
 
 	// --- Public Routes ---
 	r.Get("/", homeHandler)
