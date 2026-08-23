@@ -52,13 +52,16 @@ func main() {
 	queries := db.New(pool)
 
 	// --- Vite Asset Helper ---
-	vite, err := inertia.NewVite(inertia.ViteConfig{
+	viteCfg := inertia.ViteConfig{
 		ManifestPath: "public/build/.vite/manifest.json",
 		PublicPath:   "/build",
 		Entry:        "src/main.jsx",
-		DevServerURL: "http://localhost:5173",
 		ReactRefresh: cfg.IsDevelopment(),
-	})
+	}
+	if cfg.IsDevelopment() {
+		viteCfg.DevServerURL = "http://localhost:5173"
+	}
+	vite, err := inertia.NewVite(viteCfg)
 	if err != nil {
 		log.Printf("warning: could not initialize Vite asset helper (run 'npm run build' first): %v", err)
 	}
