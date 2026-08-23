@@ -32,7 +32,7 @@ WORKDIR /app
 
 COPY --from=builder /app/server ./
 COPY --from=frontend /app/public/build ./public/build
-COPY --from=frontend /app/frontend/index.html ./
+COPY --from=frontend /app/frontend/index.html ./frontend/index.html
 COPY --from=frontend /app/frontend/public/ ./public/
 
 RUN mkdir -p /app/sql/schema
