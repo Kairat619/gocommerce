@@ -22,6 +22,7 @@ import (
 	"gocommerce/internal/middleware/inertiamw"
 	"gocommerce/internal/service"
 	"gocommerce/internal/session"
+	"gocommerce/internal/storage"
 )
 
 func main() {
@@ -121,7 +122,15 @@ func main() {
 	cartHandler := handler.NewCartHandler(renderer, cartService, queries)
 	checkoutHandler := handler.NewCheckoutHandler(renderer, orderService, settingsService)
 	accountHandler := handler.NewAccountHandler(renderer, orderService, authService)
-	adminHandler := handler.NewAdminHandler(renderer, queries, settingsService)
+	adminHandler := handler.NewAdminHandler(renderer, queries, pool, settingsService)
+
+	// --- Media Storage (Cloudflare R2 when configured, local disk otherwise) ---
+	var mediaStore storage.Storage = storage.NewLocal()
+	if cfg.R2Enabled() {
+		mediaStore = storage.NewR2(cfg.R2.Endpoint, cfg.R2.AccessKey, cfg.R2.SecretKey, cfg.R2.Bucket, cfg.R2.PublicURL)
+	}
+	log.Printf("media storage: %s", mediaStore.Name())
+	uploadHandler := handler.NewUploadHandler(mediaStore, cfg.Upload.MaxSize)
 
 	// --- Router ---
 	r := chi.NewRouter()
@@ -148,6 +157,10 @@ func main() {
 	r.Handle("/favicon.ico", fileServer)
 	r.Handle("/robots.txt", fileServer)
 	r.Handle("/build/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		fileServer.ServeHTTP(w, r)
+	}))
+	r.Handle("/uploads/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		fileServer.ServeHTTP(w, r)
 	}))
@@ -208,6 +221,11 @@ func main() {
 		r.Get("/admin/products/{id}/edit", adminHandler.EditProduct())
 		r.Post("/admin/products/{id}", adminHandler.UpdateProduct())
 		r.Post("/admin/products/{id}/delete", adminHandler.DeleteProduct())
+
+		// Product form support: media uploads and the attribute catalogue
+		r.Post("/admin/uploads", uploadHandler.Store())
+		r.Post("/admin/attributes", adminHandler.StoreAttribute())
+		r.Post("/admin/attributes/{id}/options", adminHandler.StoreAttributeOption())
 
 		// Categories
 		r.Get("/admin/categories", adminHandler.ListCategories())

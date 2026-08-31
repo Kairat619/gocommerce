@@ -39,3 +39,6 @@ c2.txt
 c3.txt
 nul
 D:Gemini*/
+
+# Uploaded media (local storage fallback)
+public/uploads/
