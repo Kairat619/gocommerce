@@ -78,6 +78,40 @@ func (q *Queries) CountProductsByCategory(ctx context.Context, slug string) (int
 	return count, err
 }
 
+const countProductsWithSKU = `-- name: CountProductsWithSKU :one
+SELECT COUNT(*) FROM products
+WHERE sku = $1 AND ($2::uuid IS NULL OR id <> $2)
+`
+
+type CountProductsWithSKUParams struct {
+	Sku       pgtype.Text `db:"sku" json:"sku"`
+	ExcludeID pgtype.UUID `db:"exclude_id" json:"exclude_id"`
+}
+
+func (q *Queries) CountProductsWithSKU(ctx context.Context, arg CountProductsWithSKUParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsWithSKU, arg.Sku, arg.ExcludeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countProductsWithSlug = `-- name: CountProductsWithSlug :one
+SELECT COUNT(*) FROM products
+WHERE slug = $1 AND ($2::uuid IS NULL OR id <> $2)
+`
+
+type CountProductsWithSlugParams struct {
+	Slug      string      `db:"slug" json:"slug"`
+	ExcludeID pgtype.UUID `db:"exclude_id" json:"exclude_id"`
+}
+
+func (q *Queries) CountProductsWithSlug(ctx context.Context, arg CountProductsWithSlugParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsWithSlug, arg.Slug, arg.ExcludeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countSearchProducts = `-- name: CountSearchProducts :one
 SELECT COUNT(*) FROM products p
 WHERE p.is_active = true
@@ -92,27 +126,51 @@ func (q *Queries) CountSearchProducts(ctx context.Context, dollar_1 pgtype.Text)
 }
 
 const createProduct = `-- name: CreateProduct :one
-INSERT INTO products (category_id, name, slug, description, price, compare_at_price, sku, barcode, image_url, is_active, is_featured, stock_quantity, weight, meta_title, meta_description)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-RETURNING id, category_id, name, slug, description, price, compare_at_price, sku, barcode, image_url, is_active, is_featured, stock_quantity, weight, meta_title, meta_description, created_at, updated_at
+INSERT INTO products (
+    category_id, name, slug, description, short_description, price, compare_at_price, cost_price,
+    sku, barcode, image_url, is_active, is_featured, stock_quantity, weight,
+    meta_title, meta_description, meta_keywords,
+    brand, tags, track_inventory, allow_backorders, low_stock_threshold,
+    length, width, height, sort_order
+)
+VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8,
+    $9, $10, $11, $12, $13, $14, $15,
+    $16, $17, $18,
+    $19, $20, $21, $22, $23,
+    $24, $25, $26, $27
+)
+RETURNING id, category_id, name, slug, description, price, compare_at_price, sku, barcode, image_url, is_active, is_featured, stock_quantity, weight, meta_title, meta_description, created_at, updated_at, short_description, brand, tags, cost_price, track_inventory, allow_backorders, low_stock_threshold, length, width, height, meta_keywords, sort_order
 `
 
 type CreateProductParams struct {
-	CategoryID      pgtype.UUID    `db:"category_id" json:"category_id"`
-	Name            string         `db:"name" json:"name"`
-	Slug            string         `db:"slug" json:"slug"`
-	Description     pgtype.Text    `db:"description" json:"description"`
-	Price           pgtype.Numeric `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text    `db:"sku" json:"sku"`
-	Barcode         pgtype.Text    `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text    `db:"image_url" json:"image_url"`
-	IsActive        bool           `db:"is_active" json:"is_active"`
-	IsFeatured      bool           `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32          `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text    `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text    `db:"meta_description" json:"meta_description"`
+	CategoryID        pgtype.UUID    `db:"category_id" json:"category_id"`
+	Name              string         `db:"name" json:"name"`
+	Slug              string         `db:"slug" json:"slug"`
+	Description       pgtype.Text    `db:"description" json:"description"`
+	ShortDescription  pgtype.Text    `db:"short_description" json:"short_description"`
+	Price             pgtype.Numeric `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric `db:"compare_at_price" json:"compare_at_price"`
+	CostPrice         pgtype.Numeric `db:"cost_price" json:"cost_price"`
+	Sku               pgtype.Text    `db:"sku" json:"sku"`
+	Barcode           pgtype.Text    `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text    `db:"image_url" json:"image_url"`
+	IsActive          bool           `db:"is_active" json:"is_active"`
+	IsFeatured        bool           `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32          `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text    `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text    `db:"meta_description" json:"meta_description"`
+	MetaKeywords      pgtype.Text    `db:"meta_keywords" json:"meta_keywords"`
+	Brand             pgtype.Text    `db:"brand" json:"brand"`
+	Tags              []string       `db:"tags" json:"tags"`
+	TrackInventory    bool           `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool           `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32          `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric `db:"length" json:"length"`
+	Width             pgtype.Numeric `db:"width" json:"width"`
+	Height            pgtype.Numeric `db:"height" json:"height"`
+	SortOrder         int32          `db:"sort_order" json:"sort_order"`
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
@@ -121,8 +179,10 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		arg.Name,
 		arg.Slug,
 		arg.Description,
+		arg.ShortDescription,
 		arg.Price,
 		arg.CompareAtPrice,
+		arg.CostPrice,
 		arg.Sku,
 		arg.Barcode,
 		arg.ImageUrl,
@@ -132,6 +192,16 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		arg.Weight,
 		arg.MetaTitle,
 		arg.MetaDescription,
+		arg.MetaKeywords,
+		arg.Brand,
+		arg.Tags,
+		arg.TrackInventory,
+		arg.AllowBackorders,
+		arg.LowStockThreshold,
+		arg.Length,
+		arg.Width,
+		arg.Height,
+		arg.SortOrder,
 	)
 	var i Product
 	err := row.Scan(
@@ -153,6 +223,18 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.MetaDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ShortDescription,
+		&i.Brand,
+		&i.Tags,
+		&i.CostPrice,
+		&i.TrackInventory,
+		&i.AllowBackorders,
+		&i.LowStockThreshold,
+		&i.Length,
+		&i.Width,
+		&i.Height,
+		&i.MetaKeywords,
+		&i.SortOrder,
 	)
 	return i, err
 }
@@ -167,7 +249,7 @@ func (q *Queries) DeleteProduct(ctx context.Context, id pgtype.UUID) error {
 }
 
 const filterProducts = `-- name: FilterProducts :many
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.is_active = true
@@ -191,26 +273,38 @@ type FilterProductsParams struct {
 }
 
 type FilterProductsRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) FilterProducts(ctx context.Context, arg FilterProductsParams) ([]FilterProductsRow, error) {
@@ -248,6 +342,18 @@ func (q *Queries) FilterProducts(ctx context.Context, arg FilterProductsParams) 
 			&i.MetaDescription,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ShortDescription,
+			&i.Brand,
+			&i.Tags,
+			&i.CostPrice,
+			&i.TrackInventory,
+			&i.AllowBackorders,
+			&i.LowStockThreshold,
+			&i.Length,
+			&i.Width,
+			&i.Height,
+			&i.MetaKeywords,
+			&i.SortOrder,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -262,7 +368,7 @@ func (q *Queries) FilterProducts(ctx context.Context, arg FilterProductsParams) 
 }
 
 const getLowStockProducts = `-- name: GetLowStockProducts :many
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.is_active = true AND p.stock_quantity <= $1
@@ -276,26 +382,38 @@ type GetLowStockProductsParams struct {
 }
 
 type GetLowStockProductsRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) GetLowStockProducts(ctx context.Context, arg GetLowStockProductsParams) ([]GetLowStockProductsRow, error) {
@@ -326,6 +444,18 @@ func (q *Queries) GetLowStockProducts(ctx context.Context, arg GetLowStockProduc
 			&i.MetaDescription,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ShortDescription,
+			&i.Brand,
+			&i.Tags,
+			&i.CostPrice,
+			&i.TrackInventory,
+			&i.AllowBackorders,
+			&i.LowStockThreshold,
+			&i.Length,
+			&i.Width,
+			&i.Height,
+			&i.MetaKeywords,
+			&i.SortOrder,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -340,33 +470,45 @@ func (q *Queries) GetLowStockProducts(ctx context.Context, arg GetLowStockProduc
 }
 
 const getProductByBarcode = `-- name: GetProductByBarcode :one
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.barcode = $1
 `
 
 type GetProductByBarcodeRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) GetProductByBarcode(ctx context.Context, barcode pgtype.Text) (GetProductByBarcodeRow, error) {
@@ -391,6 +533,18 @@ func (q *Queries) GetProductByBarcode(ctx context.Context, barcode pgtype.Text) 
 		&i.MetaDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ShortDescription,
+		&i.Brand,
+		&i.Tags,
+		&i.CostPrice,
+		&i.TrackInventory,
+		&i.AllowBackorders,
+		&i.LowStockThreshold,
+		&i.Length,
+		&i.Width,
+		&i.Height,
+		&i.MetaKeywords,
+		&i.SortOrder,
 		&i.CategoryName,
 		&i.CategorySlug,
 	)
@@ -398,33 +552,45 @@ func (q *Queries) GetProductByBarcode(ctx context.Context, barcode pgtype.Text) 
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.id = $1
 `
 
 type GetProductByIDRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) GetProductByID(ctx context.Context, id pgtype.UUID) (GetProductByIDRow, error) {
@@ -449,6 +615,18 @@ func (q *Queries) GetProductByID(ctx context.Context, id pgtype.UUID) (GetProduc
 		&i.MetaDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ShortDescription,
+		&i.Brand,
+		&i.Tags,
+		&i.CostPrice,
+		&i.TrackInventory,
+		&i.AllowBackorders,
+		&i.LowStockThreshold,
+		&i.Length,
+		&i.Width,
+		&i.Height,
+		&i.MetaKeywords,
+		&i.SortOrder,
 		&i.CategoryName,
 		&i.CategorySlug,
 	)
@@ -456,33 +634,45 @@ func (q *Queries) GetProductByID(ctx context.Context, id pgtype.UUID) (GetProduc
 }
 
 const getProductBySKU = `-- name: GetProductBySKU :one
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.sku = $1
 `
 
 type GetProductBySKURow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) GetProductBySKU(ctx context.Context, sku pgtype.Text) (GetProductBySKURow, error) {
@@ -507,6 +697,18 @@ func (q *Queries) GetProductBySKU(ctx context.Context, sku pgtype.Text) (GetProd
 		&i.MetaDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ShortDescription,
+		&i.Brand,
+		&i.Tags,
+		&i.CostPrice,
+		&i.TrackInventory,
+		&i.AllowBackorders,
+		&i.LowStockThreshold,
+		&i.Length,
+		&i.Width,
+		&i.Height,
+		&i.MetaKeywords,
+		&i.SortOrder,
 		&i.CategoryName,
 		&i.CategorySlug,
 	)
@@ -514,33 +716,45 @@ func (q *Queries) GetProductBySKU(ctx context.Context, sku pgtype.Text) (GetProd
 }
 
 const getProductBySlug = `-- name: GetProductBySlug :one
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.slug = $1
 `
 
 type GetProductBySlugRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (GetProductBySlugRow, error) {
@@ -565,6 +779,18 @@ func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (GetProduct
 		&i.MetaDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ShortDescription,
+		&i.Brand,
+		&i.Tags,
+		&i.CostPrice,
+		&i.TrackInventory,
+		&i.AllowBackorders,
+		&i.LowStockThreshold,
+		&i.Length,
+		&i.Width,
+		&i.Height,
+		&i.MetaKeywords,
+		&i.SortOrder,
 		&i.CategoryName,
 		&i.CategorySlug,
 	)
@@ -572,7 +798,7 @@ func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (GetProduct
 }
 
 const listAllProducts = `-- name: ListAllProducts :many
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 ORDER BY p.created_at DESC
@@ -585,26 +811,38 @@ type ListAllProductsParams struct {
 }
 
 type ListAllProductsRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) ListAllProducts(ctx context.Context, arg ListAllProductsParams) ([]ListAllProductsRow, error) {
@@ -635,6 +873,18 @@ func (q *Queries) ListAllProducts(ctx context.Context, arg ListAllProductsParams
 			&i.MetaDescription,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ShortDescription,
+			&i.Brand,
+			&i.Tags,
+			&i.CostPrice,
+			&i.TrackInventory,
+			&i.AllowBackorders,
+			&i.LowStockThreshold,
+			&i.Length,
+			&i.Width,
+			&i.Height,
+			&i.MetaKeywords,
+			&i.SortOrder,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -649,7 +899,7 @@ func (q *Queries) ListAllProducts(ctx context.Context, arg ListAllProductsParams
 }
 
 const listFeaturedProducts = `-- name: ListFeaturedProducts :many
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.is_active = true AND p.is_featured = true
@@ -658,26 +908,38 @@ LIMIT $1
 `
 
 type ListFeaturedProductsRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) ListFeaturedProducts(ctx context.Context, limit int32) ([]ListFeaturedProductsRow, error) {
@@ -708,6 +970,18 @@ func (q *Queries) ListFeaturedProducts(ctx context.Context, limit int32) ([]List
 			&i.MetaDescription,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ShortDescription,
+			&i.Brand,
+			&i.Tags,
+			&i.CostPrice,
+			&i.TrackInventory,
+			&i.AllowBackorders,
+			&i.LowStockThreshold,
+			&i.Length,
+			&i.Width,
+			&i.Height,
+			&i.MetaKeywords,
+			&i.SortOrder,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -722,7 +996,7 @@ func (q *Queries) ListFeaturedProducts(ctx context.Context, limit int32) ([]List
 }
 
 const listNewestProducts = `-- name: ListNewestProducts :many
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.is_active = true
@@ -731,26 +1005,38 @@ LIMIT $1
 `
 
 type ListNewestProductsRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) ListNewestProducts(ctx context.Context, limit int32) ([]ListNewestProductsRow, error) {
@@ -781,6 +1067,18 @@ func (q *Queries) ListNewestProducts(ctx context.Context, limit int32) ([]ListNe
 			&i.MetaDescription,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ShortDescription,
+			&i.Brand,
+			&i.Tags,
+			&i.CostPrice,
+			&i.TrackInventory,
+			&i.AllowBackorders,
+			&i.LowStockThreshold,
+			&i.Length,
+			&i.Width,
+			&i.Height,
+			&i.MetaKeywords,
+			&i.SortOrder,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -794,8 +1092,34 @@ func (q *Queries) ListNewestProducts(ctx context.Context, limit int32) ([]ListNe
 	return items, nil
 }
 
+const listProductBrands = `-- name: ListProductBrands :many
+SELECT DISTINCT brand FROM products
+WHERE brand IS NOT NULL AND brand <> ''
+ORDER BY brand ASC
+`
+
+func (q *Queries) ListProductBrands(ctx context.Context) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, listProductBrands)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.Text{}
+	for rows.Next() {
+		var brand pgtype.Text
+		if err := rows.Scan(&brand); err != nil {
+			return nil, err
+		}
+		items = append(items, brand)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProducts = `-- name: ListProducts :many
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.is_active = true
@@ -809,26 +1133,38 @@ type ListProductsParams struct {
 }
 
 type ListProductsRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]ListProductsRow, error) {
@@ -859,6 +1195,18 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]L
 			&i.MetaDescription,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ShortDescription,
+			&i.Brand,
+			&i.Tags,
+			&i.CostPrice,
+			&i.TrackInventory,
+			&i.AllowBackorders,
+			&i.LowStockThreshold,
+			&i.Length,
+			&i.Width,
+			&i.Height,
+			&i.MetaKeywords,
+			&i.SortOrder,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -873,7 +1221,7 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]L
 }
 
 const listProductsByCategory = `-- name: ListProductsByCategory :many
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.is_active = true AND c.slug = $1
@@ -888,26 +1236,38 @@ type ListProductsByCategoryParams struct {
 }
 
 type ListProductsByCategoryRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) ListProductsByCategory(ctx context.Context, arg ListProductsByCategoryParams) ([]ListProductsByCategoryRow, error) {
@@ -938,6 +1298,18 @@ func (q *Queries) ListProductsByCategory(ctx context.Context, arg ListProductsBy
 			&i.MetaDescription,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ShortDescription,
+			&i.Brand,
+			&i.Tags,
+			&i.CostPrice,
+			&i.TrackInventory,
+			&i.AllowBackorders,
+			&i.LowStockThreshold,
+			&i.Length,
+			&i.Width,
+			&i.Height,
+			&i.MetaKeywords,
+			&i.SortOrder,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -952,7 +1324,7 @@ func (q *Queries) ListProductsByCategory(ctx context.Context, arg ListProductsBy
 }
 
 const listProductsByPriceRange = `-- name: ListProductsByPriceRange :many
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.is_active = true
@@ -969,26 +1341,38 @@ type ListProductsByPriceRangeParams struct {
 }
 
 type ListProductsByPriceRangeRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) ListProductsByPriceRange(ctx context.Context, arg ListProductsByPriceRangeParams) ([]ListProductsByPriceRangeRow, error) {
@@ -1024,6 +1408,18 @@ func (q *Queries) ListProductsByPriceRange(ctx context.Context, arg ListProducts
 			&i.MetaDescription,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ShortDescription,
+			&i.Brand,
+			&i.Tags,
+			&i.CostPrice,
+			&i.TrackInventory,
+			&i.AllowBackorders,
+			&i.LowStockThreshold,
+			&i.Length,
+			&i.Width,
+			&i.Height,
+			&i.MetaKeywords,
+			&i.SortOrder,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -1038,7 +1434,7 @@ func (q *Queries) ListProductsByPriceRange(ctx context.Context, arg ListProducts
 }
 
 const searchProducts = `-- name: SearchProducts :many
-SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
+SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p
 JOIN categories c ON c.id = p.category_id
 WHERE p.is_active = true
@@ -1054,26 +1450,38 @@ type SearchProductsParams struct {
 }
 
 type SearchProductsRow struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	CategoryName    string             `db:"category_name" json:"category_name"`
-	CategorySlug    string             `db:"category_slug" json:"category_slug"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+	CategoryName      string             `db:"category_name" json:"category_name"`
+	CategorySlug      string             `db:"category_slug" json:"category_slug"`
 }
 
 func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) ([]SearchProductsRow, error) {
@@ -1104,6 +1512,18 @@ func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) 
 			&i.MetaDescription,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ShortDescription,
+			&i.Brand,
+			&i.Tags,
+			&i.CostPrice,
+			&i.TrackInventory,
+			&i.AllowBackorders,
+			&i.LowStockThreshold,
+			&i.Length,
+			&i.Width,
+			&i.Height,
+			&i.MetaKeywords,
+			&i.SortOrder,
 			&i.CategoryName,
 			&i.CategorySlug,
 		); err != nil {
@@ -1119,28 +1539,66 @@ func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) 
 
 const updateProduct = `-- name: UpdateProduct :one
 UPDATE products
-SET category_id = $2, name = $3, slug = $4, description = $5, price = $6, compare_at_price = $7, sku = $8, barcode = $9, image_url = $10, is_active = $11, is_featured = $12, stock_quantity = $13, weight = $14, meta_title = $15, meta_description = $16
+SET category_id = $2,
+    name = $3,
+    slug = $4,
+    description = $5,
+    short_description = $6,
+    price = $7,
+    compare_at_price = $8,
+    cost_price = $9,
+    sku = $10,
+    barcode = $11,
+    image_url = $12,
+    is_active = $13,
+    is_featured = $14,
+    stock_quantity = $15,
+    weight = $16,
+    meta_title = $17,
+    meta_description = $18,
+    meta_keywords = $19,
+    brand = $20,
+    tags = $21,
+    track_inventory = $22,
+    allow_backorders = $23,
+    low_stock_threshold = $24,
+    length = $25,
+    width = $26,
+    height = $27,
+    sort_order = $28
 WHERE id = $1
-RETURNING id, category_id, name, slug, description, price, compare_at_price, sku, barcode, image_url, is_active, is_featured, stock_quantity, weight, meta_title, meta_description, created_at, updated_at
+RETURNING id, category_id, name, slug, description, price, compare_at_price, sku, barcode, image_url, is_active, is_featured, stock_quantity, weight, meta_title, meta_description, created_at, updated_at, short_description, brand, tags, cost_price, track_inventory, allow_backorders, low_stock_threshold, length, width, height, meta_keywords, sort_order
 `
 
 type UpdateProductParams struct {
-	ID              pgtype.UUID    `db:"id" json:"id"`
-	CategoryID      pgtype.UUID    `db:"category_id" json:"category_id"`
-	Name            string         `db:"name" json:"name"`
-	Slug            string         `db:"slug" json:"slug"`
-	Description     pgtype.Text    `db:"description" json:"description"`
-	Price           pgtype.Numeric `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text    `db:"sku" json:"sku"`
-	Barcode         pgtype.Text    `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text    `db:"image_url" json:"image_url"`
-	IsActive        bool           `db:"is_active" json:"is_active"`
-	IsFeatured      bool           `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32          `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text    `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text    `db:"meta_description" json:"meta_description"`
+	ID                pgtype.UUID    `db:"id" json:"id"`
+	CategoryID        pgtype.UUID    `db:"category_id" json:"category_id"`
+	Name              string         `db:"name" json:"name"`
+	Slug              string         `db:"slug" json:"slug"`
+	Description       pgtype.Text    `db:"description" json:"description"`
+	ShortDescription  pgtype.Text    `db:"short_description" json:"short_description"`
+	Price             pgtype.Numeric `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric `db:"compare_at_price" json:"compare_at_price"`
+	CostPrice         pgtype.Numeric `db:"cost_price" json:"cost_price"`
+	Sku               pgtype.Text    `db:"sku" json:"sku"`
+	Barcode           pgtype.Text    `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text    `db:"image_url" json:"image_url"`
+	IsActive          bool           `db:"is_active" json:"is_active"`
+	IsFeatured        bool           `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32          `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text    `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text    `db:"meta_description" json:"meta_description"`
+	MetaKeywords      pgtype.Text    `db:"meta_keywords" json:"meta_keywords"`
+	Brand             pgtype.Text    `db:"brand" json:"brand"`
+	Tags              []string       `db:"tags" json:"tags"`
+	TrackInventory    bool           `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool           `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32          `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric `db:"length" json:"length"`
+	Width             pgtype.Numeric `db:"width" json:"width"`
+	Height            pgtype.Numeric `db:"height" json:"height"`
+	SortOrder         int32          `db:"sort_order" json:"sort_order"`
 }
 
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error) {
@@ -1150,8 +1608,10 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		arg.Name,
 		arg.Slug,
 		arg.Description,
+		arg.ShortDescription,
 		arg.Price,
 		arg.CompareAtPrice,
+		arg.CostPrice,
 		arg.Sku,
 		arg.Barcode,
 		arg.ImageUrl,
@@ -1161,6 +1621,16 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		arg.Weight,
 		arg.MetaTitle,
 		arg.MetaDescription,
+		arg.MetaKeywords,
+		arg.Brand,
+		arg.Tags,
+		arg.TrackInventory,
+		arg.AllowBackorders,
+		arg.LowStockThreshold,
+		arg.Length,
+		arg.Width,
+		arg.Height,
+		arg.SortOrder,
 	)
 	var i Product
 	err := row.Scan(
@@ -1182,6 +1652,18 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		&i.MetaDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ShortDescription,
+		&i.Brand,
+		&i.Tags,
+		&i.CostPrice,
+		&i.TrackInventory,
+		&i.AllowBackorders,
+		&i.LowStockThreshold,
+		&i.Length,
+		&i.Width,
+		&i.Height,
+		&i.MetaKeywords,
+		&i.SortOrder,
 	)
 	return i, err
 }

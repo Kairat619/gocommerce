@@ -152,9 +152,10 @@ export default function ProductsShow({
           </div>
 
           {product.description && (
-            <p className="mt-6 max-w-prose text-body-md leading-relaxed text-muted-foreground">
-              {product.description}
-            </p>
+            <div
+              className="prose-product mt-6 max-w-prose text-body-md leading-relaxed text-muted-foreground"
+              dangerouslySetInnerHTML={{ __html: product.description }}
+            />
           )}
 
           {variants && variants.length > 0 && (
@@ -245,10 +246,17 @@ export default function ProductsShow({
                   +
                 </span>
               </summary>
-              <p className="mt-3 text-body-sm leading-relaxed text-muted-foreground">
-                {product.description ||
-                  "A masterfully crafted piece designed for the discerning individual who seeks quality without compromising on style."}
-              </p>
+              {product.description ? (
+                <div
+                  className="prose-product mt-3 text-body-sm leading-relaxed text-muted-foreground"
+                  dangerouslySetInnerHTML={{ __html: product.description }}
+                />
+              ) : (
+                <p className="mt-3 text-body-sm leading-relaxed text-muted-foreground">
+                  A masterfully crafted piece designed for the discerning individual who seeks quality without
+                  compromising on style.
+                </p>
+              )}
             </details>
             <details className="group py-4">
               <summary className="flex cursor-pointer items-center justify-between text-label-lg font-semibold uppercase tracking-[0.1em] text-ink">

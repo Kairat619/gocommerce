@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	inertia "github.com/mayahiro/go-inertia"
 
 	"gocommerce/internal/db"
@@ -17,11 +18,12 @@ import (
 type AdminHandler struct {
 	renderer *inertia.Renderer
 	queries  *db.Queries
+	pool     *pgxpool.Pool
 	settings *service.SettingsService
 }
 
-func NewAdminHandler(renderer *inertia.Renderer, queries *db.Queries, settings *service.SettingsService) *AdminHandler {
-	return &AdminHandler{renderer: renderer, queries: queries, settings: settings}
+func NewAdminHandler(renderer *inertia.Renderer, queries *db.Queries, pool *pgxpool.Pool, settings *service.SettingsService) *AdminHandler {
+	return &AdminHandler{renderer: renderer, queries: queries, pool: pool, settings: settings}
 }
 
 func (h *AdminHandler) Dashboard() http.HandlerFunc {
@@ -105,181 +107,6 @@ func (h *AdminHandler) ListProducts() http.HandlerFunc {
 				"total":   totalPages(total, 20),
 			},
 		})
-	}
-}
-
-func (h *AdminHandler) CreateProduct() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		categories, _ := h.queries.ListActiveCategories(r.Context())
-
-		serializedCategories := make([]map[string]any, len(categories))
-		for i, c := range categories {
-			serializedCategories[i] = map[string]any{
-				"id":   fmt.Sprintf("%x", c.ID.Bytes),
-				"name": c.Name,
-				"slug": c.Slug,
-			}
-		}
-
-		h.renderer.Render(w, r, "Pages/Admin/Products/Create", inertia.Props{
-			"categories": serializedCategories,
-		})
-	}
-}
-
-func (h *AdminHandler) StoreProduct() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		fields, err := parseInput(r)
-		if err != nil {
-			h.renderer.Redirect(w, r, "/admin/products/create", inertia.WithFlash(inertia.Flash{
-				"error": "Invalid request.",
-			}))
-			return
-		}
-
-		categoryID, _ := parseUUID(fields["category_id"])
-		price, _ := strconv.ParseFloat(fields["price"], 64)
-		compareAtPrice, _ := strconv.ParseFloat(fields["compare_at_price"], 64)
-		stockQuantity, _ := strconv.ParseInt(fields["stock_quantity"], 10, 32)
-		weight, _ := strconv.ParseFloat(fields["weight"], 64)
-
-		product, err := h.queries.CreateProduct(r.Context(), db.CreateProductParams{
-			CategoryID:      categoryID,
-			Name:            fields["name"],
-			Slug:            slugify(fields["name"]),
-			Description:     pgtype.Text{String: fields["description"], Valid: fields["description"] != ""},
-			Price:           floatToNumeric(price),
-			CompareAtPrice:  floatToNumeric(compareAtPrice),
-			Sku:             pgtype.Text{String: fields["sku"], Valid: fields["sku"] != ""},
-			Barcode:         pgtype.Text{String: fields["barcode"], Valid: fields["barcode"] != ""},
-			ImageUrl:        pgtype.Text{String: fields["image_url"], Valid: fields["image_url"] != ""},
-			IsActive:        fields["is_active"] == "true" || fields["is_active"] == "on",
-			IsFeatured:      fields["is_featured"] == "true" || fields["is_featured"] == "on",
-			StockQuantity:   int32(stockQuantity),
-			Weight:          floatToNumeric(weight),
-			MetaTitle:       pgtype.Text{String: fields["meta_title"], Valid: fields["meta_title"] != ""},
-			MetaDescription: pgtype.Text{String: fields["meta_description"], Valid: fields["meta_description"] != ""},
-		})
-		if err != nil {
-			h.renderer.Redirect(w, r, "/admin/products/create", inertia.WithFlash(inertia.Flash{
-				"error": "Failed to create product: " + err.Error(),
-			}))
-			return
-		}
-
-		h.renderer.Redirect(w, r, "/admin/products", inertia.WithFlash(inertia.Flash{
-			"success": fmt.Sprintf("Product '%s' created.", product.Name),
-		}))
-	}
-}
-
-func (h *AdminHandler) EditProduct() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
-		productUUID, err := parseUUID(id)
-		if err != nil {
-			h.renderer.Redirect(w, r, "/admin/products", inertia.WithFlash(inertia.Flash{
-				"error": "Invalid product ID.",
-			}))
-			return
-		}
-
-		product, err := h.queries.GetProductByID(r.Context(), productUUID)
-		if err != nil {
-			h.renderer.Redirect(w, r, "/admin/products", inertia.WithFlash(inertia.Flash{
-				"error": "Product not found.",
-			}))
-			return
-		}
-
-		categories, _ := h.queries.ListActiveCategories(r.Context())
-
-		serializedCategories := make([]map[string]any, len(categories))
-		for i, c := range categories {
-			serializedCategories[i] = map[string]any{
-				"id":   fmt.Sprintf("%x", c.ID.Bytes),
-				"name": c.Name,
-				"slug": c.Slug,
-			}
-		}
-
-		h.renderer.Render(w, r, "Pages/Admin/Products/Edit", inertia.Props{
-			"product": map[string]any{
-				"id":               fmt.Sprintf("%x", product.ID.Bytes),
-				"category_id":      fmt.Sprintf("%x", product.CategoryID.Bytes),
-				"name":             product.Name,
-				"slug":             product.Slug,
-				"description":      product.Description.String,
-				"price":            formatNumeric(product.Price),
-				"compare_at_price": formatNumeric(product.CompareAtPrice),
-				"sku":              product.Sku.String,
-				"barcode":          product.Barcode.String,
-				"image_url":        product.ImageUrl.String,
-				"is_active":        product.IsActive,
-				"is_featured":      product.IsFeatured,
-				"stock_quantity":   product.StockQuantity,
-				"weight":           formatNumeric(product.Weight),
-				"meta_title":       product.MetaTitle.String,
-				"meta_description": product.MetaDescription.String,
-			},
-			"categories": serializedCategories,
-		})
-	}
-}
-
-func (h *AdminHandler) UpdateProduct() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
-		productUUID, err := parseUUID(id)
-		if err != nil {
-			h.renderer.Redirect(w, r, "/admin/products", inertia.WithFlash(inertia.Flash{
-				"error": "Invalid product ID.",
-			}))
-			return
-		}
-
-		fields, err := parseInput(r)
-		if err != nil {
-			h.renderer.Redirect(w, r, "/admin/products/"+id+"/edit", inertia.WithFlash(inertia.Flash{
-				"error": "Invalid request.",
-			}))
-			return
-		}
-
-		categoryID, _ := parseUUID(fields["category_id"])
-		price, _ := strconv.ParseFloat(fields["price"], 64)
-		compareAtPrice, _ := strconv.ParseFloat(fields["compare_at_price"], 64)
-		stockQuantity, _ := strconv.ParseInt(fields["stock_quantity"], 10, 32)
-		weight, _ := strconv.ParseFloat(fields["weight"], 64)
-
-		_, err = h.queries.UpdateProduct(r.Context(), db.UpdateProductParams{
-			ID:              productUUID,
-			CategoryID:      categoryID,
-			Name:            fields["name"],
-			Slug:            slugify(fields["name"]),
-			Description:     pgtype.Text{String: fields["description"], Valid: fields["description"] != ""},
-			Price:           floatToNumeric(price),
-			CompareAtPrice:  floatToNumeric(compareAtPrice),
-			Sku:             pgtype.Text{String: fields["sku"], Valid: fields["sku"] != ""},
-			Barcode:         pgtype.Text{String: fields["barcode"], Valid: fields["barcode"] != ""},
-			ImageUrl:        pgtype.Text{String: fields["image_url"], Valid: fields["image_url"] != ""},
-			IsActive:        fields["is_active"] == "true" || fields["is_active"] == "on",
-			IsFeatured:      fields["is_featured"] == "true" || fields["is_featured"] == "on",
-			StockQuantity:   int32(stockQuantity),
-			Weight:          floatToNumeric(weight),
-			MetaTitle:       pgtype.Text{String: fields["meta_title"], Valid: fields["meta_title"] != ""},
-			MetaDescription: pgtype.Text{String: fields["meta_description"], Valid: fields["meta_description"] != ""},
-		})
-		if err != nil {
-			h.renderer.Redirect(w, r, "/admin/products/"+id+"/edit", inertia.WithFlash(inertia.Flash{
-				"error": "Failed to update product: " + err.Error(),
-			}))
-			return
-		}
-
-		h.renderer.Redirect(w, r, "/admin/products", inertia.WithFlash(inertia.Flash{
-			"success": "Product updated.",
-		}))
 	}
 }
 

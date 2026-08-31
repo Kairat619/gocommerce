@@ -29,6 +29,62 @@
   .container-2xl {
     @apply mx-auto w-full max-w-screen-2xl px-4 md:px-8 lg:px-12;
   }
+
+  /* Product description editor and storefront description rendering */
+  .admin-richtext:empty::before {
+    content: attr(data-placeholder);
+    @apply text-gray-400;
+  }
+
+  .admin-richtext h2,
+  .prose-product h2 {
+    @apply mb-2 mt-4 text-lg font-semibold;
+  }
+
+  .admin-richtext h3,
+  .prose-product h3 {
+    @apply mb-2 mt-4 text-base font-semibold;
+  }
+
+  .admin-richtext h4,
+  .prose-product h4 {
+    @apply mb-2 mt-3 text-sm font-semibold;
+  }
+
+  .admin-richtext p,
+  .prose-product p {
+    @apply mb-2;
+  }
+
+  .admin-richtext ul,
+  .prose-product ul {
+    @apply mb-2 list-disc pl-5;
+  }
+
+  .admin-richtext ol,
+  .prose-product ol {
+    @apply mb-2 list-decimal pl-5;
+  }
+
+  .admin-richtext blockquote,
+  .prose-product blockquote {
+    @apply my-2 border-l-2 border-gray-300 pl-3 italic;
+  }
+
+  .admin-richtext a,
+  .prose-product a {
+    @apply underline;
+  }
+
+  .admin-richtext img,
+  .prose-product img {
+    @apply my-2 max-w-full rounded;
+  }
+
+  .admin-richtext table,
+  .prose-product table {
+    @apply my-2 w-full border-collapse text-sm;
+  }
 }
 
 @layer utilities {

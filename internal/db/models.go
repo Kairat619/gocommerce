@@ -76,6 +76,26 @@ type Address struct {
 	UpdatedAt    pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
+type Attribute struct {
+	ID         pgtype.UUID        `db:"id" json:"id"`
+	Code       string             `db:"code" json:"code"`
+	Name       string             `db:"name" json:"name"`
+	Type       string             `db:"type" json:"type"`
+	IsRequired bool               `db:"is_required" json:"is_required"`
+	IsVariant  bool               `db:"is_variant" json:"is_variant"`
+	SortOrder  int32              `db:"sort_order" json:"sort_order"`
+	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type AttributeOption struct {
+	ID          pgtype.UUID        `db:"id" json:"id"`
+	AttributeID pgtype.UUID        `db:"attribute_id" json:"attribute_id"`
+	Value       string             `db:"value" json:"value"`
+	SortOrder   int32              `db:"sort_order" json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type Category struct {
 	ID          pgtype.UUID        `db:"id" json:"id"`
 	ParentID    pgtype.UUID        `db:"parent_id" json:"parent_id"`
@@ -129,24 +149,46 @@ type OrderItem struct {
 }
 
 type Product struct {
-	ID              pgtype.UUID        `db:"id" json:"id"`
-	CategoryID      pgtype.UUID        `db:"category_id" json:"category_id"`
-	Name            string             `db:"name" json:"name"`
-	Slug            string             `db:"slug" json:"slug"`
-	Description     pgtype.Text        `db:"description" json:"description"`
-	Price           pgtype.Numeric     `db:"price" json:"price"`
-	CompareAtPrice  pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
-	Sku             pgtype.Text        `db:"sku" json:"sku"`
-	Barcode         pgtype.Text        `db:"barcode" json:"barcode"`
-	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
-	IsActive        bool               `db:"is_active" json:"is_active"`
-	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
-	StockQuantity   int32              `db:"stock_quantity" json:"stock_quantity"`
-	Weight          pgtype.Numeric     `db:"weight" json:"weight"`
-	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
-	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID                pgtype.UUID        `db:"id" json:"id"`
+	CategoryID        pgtype.UUID        `db:"category_id" json:"category_id"`
+	Name              string             `db:"name" json:"name"`
+	Slug              string             `db:"slug" json:"slug"`
+	Description       pgtype.Text        `db:"description" json:"description"`
+	Price             pgtype.Numeric     `db:"price" json:"price"`
+	CompareAtPrice    pgtype.Numeric     `db:"compare_at_price" json:"compare_at_price"`
+	Sku               pgtype.Text        `db:"sku" json:"sku"`
+	Barcode           pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl          pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive          bool               `db:"is_active" json:"is_active"`
+	IsFeatured        bool               `db:"is_featured" json:"is_featured"`
+	StockQuantity     int32              `db:"stock_quantity" json:"stock_quantity"`
+	Weight            pgtype.Numeric     `db:"weight" json:"weight"`
+	MetaTitle         pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription   pgtype.Text        `db:"meta_description" json:"meta_description"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ShortDescription  pgtype.Text        `db:"short_description" json:"short_description"`
+	Brand             pgtype.Text        `db:"brand" json:"brand"`
+	Tags              []string           `db:"tags" json:"tags"`
+	CostPrice         pgtype.Numeric     `db:"cost_price" json:"cost_price"`
+	TrackInventory    bool               `db:"track_inventory" json:"track_inventory"`
+	AllowBackorders   bool               `db:"allow_backorders" json:"allow_backorders"`
+	LowStockThreshold int32              `db:"low_stock_threshold" json:"low_stock_threshold"`
+	Length            pgtype.Numeric     `db:"length" json:"length"`
+	Width             pgtype.Numeric     `db:"width" json:"width"`
+	Height            pgtype.Numeric     `db:"height" json:"height"`
+	MetaKeywords      pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	SortOrder         int32              `db:"sort_order" json:"sort_order"`
+}
+
+type ProductAttribute struct {
+	ID          pgtype.UUID        `db:"id" json:"id"`
+	ProductID   pgtype.UUID        `db:"product_id" json:"product_id"`
+	AttributeID pgtype.UUID        `db:"attribute_id" json:"attribute_id"`
+	OptionID    pgtype.UUID        `db:"option_id" json:"option_id"`
+	Value       pgtype.Text        `db:"value" json:"value"`
+	SortOrder   int32              `db:"sort_order" json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type ProductImage struct {
@@ -169,6 +211,11 @@ type ProductVariant struct {
 	IsActive      bool               `db:"is_active" json:"is_active"`
 	CreatedAt     pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	Barcode       pgtype.Text        `db:"barcode" json:"barcode"`
+	ImageUrl      pgtype.Text        `db:"image_url" json:"image_url"`
+	Weight        pgtype.Numeric     `db:"weight" json:"weight"`
+	Options       []byte             `db:"options" json:"options"`
+	SortOrder     int32              `db:"sort_order" json:"sort_order"`
 }
 
 type StoreSetting struct {

@@ -211,3 +211,60 @@ CREATE TABLE store_settings (
 );
 
 CREATE TRIGGER trg_store_settings_updated_at BEFORE UPDATE ON store_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- -------------------------------------------
+-- V4: Product management (attributes, richer product fields)
+-- -------------------------------------------
+ALTER TABLE products
+    ADD COLUMN short_description VARCHAR(500),
+    ADD COLUMN brand VARCHAR(255),
+    ADD COLUMN tags TEXT[] NOT NULL DEFAULT '{}',
+    ADD COLUMN cost_price DECIMAL(10, 2),
+    ADD COLUMN track_inventory BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN allow_backorders BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN length DECIMAL(8, 2),
+    ADD COLUMN width DECIMAL(8, 2),
+    ADD COLUMN height DECIMAL(8, 2),
+    ADD COLUMN meta_keywords VARCHAR(500),
+    ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE product_variants
+    ADD COLUMN barcode VARCHAR(100),
+    ADD COLUMN image_url VARCHAR(512),
+    ADD COLUMN weight DECIMAL(8, 2),
+    ADD COLUMN options JSONB NOT NULL DEFAULT '{}'::jsonb,
+    ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE attributes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(20) NOT NULL DEFAULT 'text',
+    is_required BOOLEAN NOT NULL DEFAULT false,
+    is_variant BOOLEAN NOT NULL DEFAULT false,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE attribute_options (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    attribute_id UUID NOT NULL REFERENCES attributes(id) ON DELETE CASCADE,
+    value VARCHAR(255) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (attribute_id, value)
+);
+
+CREATE TABLE product_attributes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    attribute_id UUID NOT NULL REFERENCES attributes(id) ON DELETE CASCADE,
+    option_id UUID REFERENCES attribute_options(id) ON DELETE SET NULL,
+    value TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TRIGGER trg_attributes_updated_at BEFORE UPDATE ON attributes FOR EACH ROW EXECUTE FUNCTION update_updated_at();

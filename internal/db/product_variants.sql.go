@@ -12,18 +12,26 @@ import (
 )
 
 const createProductVariant = `-- name: CreateProductVariant :one
-INSERT INTO product_variants (product_id, name, sku, price, stock_quantity, is_active)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at
+INSERT INTO product_variants (
+    product_id, name, sku, barcode, price, stock_quantity, is_active,
+    image_url, weight, options, sort_order
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at, barcode, image_url, weight, options, sort_order
 `
 
 type CreateProductVariantParams struct {
 	ProductID     pgtype.UUID    `db:"product_id" json:"product_id"`
 	Name          string         `db:"name" json:"name"`
 	Sku           pgtype.Text    `db:"sku" json:"sku"`
+	Barcode       pgtype.Text    `db:"barcode" json:"barcode"`
 	Price         pgtype.Numeric `db:"price" json:"price"`
 	StockQuantity int32          `db:"stock_quantity" json:"stock_quantity"`
 	IsActive      bool           `db:"is_active" json:"is_active"`
+	ImageUrl      pgtype.Text    `db:"image_url" json:"image_url"`
+	Weight        pgtype.Numeric `db:"weight" json:"weight"`
+	Options       []byte         `db:"options" json:"options"`
+	SortOrder     int32          `db:"sort_order" json:"sort_order"`
 }
 
 func (q *Queries) CreateProductVariant(ctx context.Context, arg CreateProductVariantParams) (ProductVariant, error) {
@@ -31,9 +39,14 @@ func (q *Queries) CreateProductVariant(ctx context.Context, arg CreateProductVar
 		arg.ProductID,
 		arg.Name,
 		arg.Sku,
+		arg.Barcode,
 		arg.Price,
 		arg.StockQuantity,
 		arg.IsActive,
+		arg.ImageUrl,
+		arg.Weight,
+		arg.Options,
+		arg.SortOrder,
 	)
 	var i ProductVariant
 	err := row.Scan(
@@ -46,6 +59,11 @@ func (q *Queries) CreateProductVariant(ctx context.Context, arg CreateProductVar
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Barcode,
+		&i.ImageUrl,
+		&i.Weight,
+		&i.Options,
+		&i.SortOrder,
 	)
 	return i, err
 }
@@ -68,8 +86,23 @@ func (q *Queries) DeleteVariantsByProductID(ctx context.Context, productID pgtyp
 	return err
 }
 
+const deleteVariantsNotIn = `-- name: DeleteVariantsNotIn :exec
+DELETE FROM product_variants
+WHERE product_id = $1 AND NOT (id = ANY($2::uuid[]))
+`
+
+type DeleteVariantsNotInParams struct {
+	ProductID pgtype.UUID   `db:"product_id" json:"product_id"`
+	KeepIds   []pgtype.UUID `db:"keep_ids" json:"keep_ids"`
+}
+
+func (q *Queries) DeleteVariantsNotIn(ctx context.Context, arg DeleteVariantsNotInParams) error {
+	_, err := q.db.Exec(ctx, deleteVariantsNotIn, arg.ProductID, arg.KeepIds)
+	return err
+}
+
 const getProductVariantByID = `-- name: GetProductVariantByID :one
-SELECT id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at FROM product_variants WHERE id = $1
+SELECT id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at, barcode, image_url, weight, options, sort_order FROM product_variants WHERE id = $1
 `
 
 func (q *Queries) GetProductVariantByID(ctx context.Context, id pgtype.UUID) (ProductVariant, error) {
@@ -85,12 +118,17 @@ func (q *Queries) GetProductVariantByID(ctx context.Context, id pgtype.UUID) (Pr
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Barcode,
+		&i.ImageUrl,
+		&i.Weight,
+		&i.Options,
+		&i.SortOrder,
 	)
 	return i, err
 }
 
 const getVariantBySKU = `-- name: GetVariantBySKU :one
-SELECT id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at FROM product_variants WHERE sku = $1
+SELECT id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at, barcode, image_url, weight, options, sort_order FROM product_variants WHERE sku = $1
 `
 
 func (q *Queries) GetVariantBySKU(ctx context.Context, sku pgtype.Text) (ProductVariant, error) {
@@ -106,14 +144,19 @@ func (q *Queries) GetVariantBySKU(ctx context.Context, sku pgtype.Text) (Product
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Barcode,
+		&i.ImageUrl,
+		&i.Weight,
+		&i.Options,
+		&i.SortOrder,
 	)
 	return i, err
 }
 
 const listActiveProductVariants = `-- name: ListActiveProductVariants :many
-SELECT id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at FROM product_variants
+SELECT id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at, barcode, image_url, weight, options, sort_order FROM product_variants
 WHERE product_id = $1 AND is_active = true
-ORDER BY created_at ASC
+ORDER BY sort_order ASC, created_at ASC
 `
 
 func (q *Queries) ListActiveProductVariants(ctx context.Context, productID pgtype.UUID) ([]ProductVariant, error) {
@@ -135,6 +178,11 @@ func (q *Queries) ListActiveProductVariants(ctx context.Context, productID pgtyp
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Barcode,
+			&i.ImageUrl,
+			&i.Weight,
+			&i.Options,
+			&i.SortOrder,
 		); err != nil {
 			return nil, err
 		}
@@ -147,9 +195,9 @@ func (q *Queries) ListActiveProductVariants(ctx context.Context, productID pgtyp
 }
 
 const listProductVariants = `-- name: ListProductVariants :many
-SELECT id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at FROM product_variants
+SELECT id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at, barcode, image_url, weight, options, sort_order FROM product_variants
 WHERE product_id = $1
-ORDER BY created_at ASC
+ORDER BY sort_order ASC, created_at ASC
 `
 
 func (q *Queries) ListProductVariants(ctx context.Context, productID pgtype.UUID) ([]ProductVariant, error) {
@@ -171,6 +219,11 @@ func (q *Queries) ListProductVariants(ctx context.Context, productID pgtype.UUID
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Barcode,
+			&i.ImageUrl,
+			&i.Weight,
+			&i.Options,
+			&i.SortOrder,
 		); err != nil {
 			return nil, err
 		}
@@ -184,18 +237,32 @@ func (q *Queries) ListProductVariants(ctx context.Context, productID pgtype.UUID
 
 const updateProductVariant = `-- name: UpdateProductVariant :one
 UPDATE product_variants
-SET name = $2, sku = $3, price = $4, stock_quantity = $5, is_active = $6
+SET name = $2,
+    sku = $3,
+    barcode = $4,
+    price = $5,
+    stock_quantity = $6,
+    is_active = $7,
+    image_url = $8,
+    weight = $9,
+    options = $10,
+    sort_order = $11
 WHERE id = $1
-RETURNING id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at
+RETURNING id, product_id, name, sku, price, stock_quantity, is_active, created_at, updated_at, barcode, image_url, weight, options, sort_order
 `
 
 type UpdateProductVariantParams struct {
 	ID            pgtype.UUID    `db:"id" json:"id"`
 	Name          string         `db:"name" json:"name"`
 	Sku           pgtype.Text    `db:"sku" json:"sku"`
+	Barcode       pgtype.Text    `db:"barcode" json:"barcode"`
 	Price         pgtype.Numeric `db:"price" json:"price"`
 	StockQuantity int32          `db:"stock_quantity" json:"stock_quantity"`
 	IsActive      bool           `db:"is_active" json:"is_active"`
+	ImageUrl      pgtype.Text    `db:"image_url" json:"image_url"`
+	Weight        pgtype.Numeric `db:"weight" json:"weight"`
+	Options       []byte         `db:"options" json:"options"`
+	SortOrder     int32          `db:"sort_order" json:"sort_order"`
 }
 
 func (q *Queries) UpdateProductVariant(ctx context.Context, arg UpdateProductVariantParams) (ProductVariant, error) {
@@ -203,9 +270,14 @@ func (q *Queries) UpdateProductVariant(ctx context.Context, arg UpdateProductVar
 		arg.ID,
 		arg.Name,
 		arg.Sku,
+		arg.Barcode,
 		arg.Price,
 		arg.StockQuantity,
 		arg.IsActive,
+		arg.ImageUrl,
+		arg.Weight,
+		arg.Options,
+		arg.SortOrder,
 	)
 	var i ProductVariant
 	err := row.Scan(
@@ -218,6 +290,11 @@ func (q *Queries) UpdateProductVariant(ctx context.Context, arg UpdateProductVar
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Barcode,
+		&i.ImageUrl,
+		&i.Weight,
+		&i.Options,
+		&i.SortOrder,
 	)
 	return i, err
 }

@@ -11,13 +11,51 @@ JOIN categories c ON c.id = p.category_id
 WHERE p.slug = $1;
 
 -- name: CreateProduct :one
-INSERT INTO products (category_id, name, slug, description, price, compare_at_price, sku, barcode, image_url, is_active, is_featured, stock_quantity, weight, meta_title, meta_description)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+INSERT INTO products (
+    category_id, name, slug, description, short_description, price, compare_at_price, cost_price,
+    sku, barcode, image_url, is_active, is_featured, stock_quantity, weight,
+    meta_title, meta_description, meta_keywords,
+    brand, tags, track_inventory, allow_backorders, low_stock_threshold,
+    length, width, height, sort_order
+)
+VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8,
+    $9, $10, $11, $12, $13, $14, $15,
+    $16, $17, $18,
+    $19, $20, $21, $22, $23,
+    $24, $25, $26, $27
+)
 RETURNING *;
 
 -- name: UpdateProduct :one
 UPDATE products
-SET category_id = $2, name = $3, slug = $4, description = $5, price = $6, compare_at_price = $7, sku = $8, barcode = $9, image_url = $10, is_active = $11, is_featured = $12, stock_quantity = $13, weight = $14, meta_title = $15, meta_description = $16
+SET category_id = $2,
+    name = $3,
+    slug = $4,
+    description = $5,
+    short_description = $6,
+    price = $7,
+    compare_at_price = $8,
+    cost_price = $9,
+    sku = $10,
+    barcode = $11,
+    image_url = $12,
+    is_active = $13,
+    is_featured = $14,
+    stock_quantity = $15,
+    weight = $16,
+    meta_title = $17,
+    meta_description = $18,
+    meta_keywords = $19,
+    brand = $20,
+    tags = $21,
+    track_inventory = $22,
+    allow_backorders = $23,
+    low_stock_threshold = $24,
+    length = $25,
+    width = $26,
+    height = $27,
+    sort_order = $28
 WHERE id = $1
 RETURNING *;
 
@@ -145,3 +183,16 @@ WHERE p.is_active = true
   AND (sqlc.narg('category')::text IS NULL OR c.slug = sqlc.narg('category'))
   AND (sqlc.narg('min_price')::numeric IS NULL OR p.price >= sqlc.narg('min_price'))
   AND (sqlc.narg('max_price')::numeric IS NULL OR p.price <= sqlc.narg('max_price'));
+
+-- name: CountProductsWithSlug :one
+SELECT COUNT(*) FROM products
+WHERE slug = $1 AND (sqlc.narg('exclude_id')::uuid IS NULL OR id <> sqlc.narg('exclude_id'));
+
+-- name: CountProductsWithSKU :one
+SELECT COUNT(*) FROM products
+WHERE sku = $1 AND (sqlc.narg('exclude_id')::uuid IS NULL OR id <> sqlc.narg('exclude_id'));
+
+-- name: ListProductBrands :many
+SELECT DISTINCT brand FROM products
+WHERE brand IS NOT NULL AND brand <> ''
+ORDER BY brand ASC;
