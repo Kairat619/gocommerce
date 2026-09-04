@@ -50,7 +50,7 @@ export default function ProductFilters({
           <button
             type="button"
             onClick={() => onSelectCategory("")}
-            className={`block w-full py-1.5 text-left text-body-sm transition-colors ${
+            className={`block w-full py-2.5 text-left text-body-sm transition-colors lg:py-1.5 ${
               !values.category
                 ? "font-semibold text-accent"
                 : "text-muted-foreground hover:text-ink"
@@ -63,7 +63,7 @@ export default function ProductFilters({
               key={cat.slug}
               type="button"
               onClick={() => onSelectCategory(cat.slug)}
-              className={`flex w-full items-center justify-between py-1.5 text-left text-body-sm transition-colors ${
+              className={`flex w-full items-center justify-between py-2.5 text-left text-body-sm transition-colors lg:py-1.5 ${
                 values.category === cat.slug
                   ? "font-semibold text-accent"
                   : "text-muted-foreground hover:text-ink"

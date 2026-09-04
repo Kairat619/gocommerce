@@ -182,9 +182,21 @@ These are load-bearing. Breaking one breaks pages silently.
   labelled inputs, adequate contrast, real touch targets
 - `prefers-reduced-motion` is respected (already handled in `app.css`)
 - Loading states, empty states, error states
-- Flash messages auto-dismiss after 5 seconds and can be dismissed manually
+- Flash **successes** auto-dismiss after 5 seconds; flash **errors** persist
+  until dismissed. Several forms — checkout in particular — return their only
+  feedback as a flash error, so it must not disappear on a timer.
+- Escape dismisses the flash message
 - Flash messages render **once** per page (do not add a second renderer to a page
   already inside a layout that mounts `FlashMessage`)
+- A "Skip to content" link is the first focusable element and targets
+  `#main-content` on `<main>`
+- Every keyboard-focusable control shows a visible focus ring
+- The user dropdown and mobile menu close on outside click, on Escape, and on
+  Inertia navigation
+- Filters collapse behind a toggle below the `lg` breakpoint, with a count of
+  the active ones
+- Pagination windows the page list (first, last, current ±1, with gaps) instead
+  of rendering every page
 
 ---
 

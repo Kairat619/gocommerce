@@ -28,14 +28,14 @@ export default function ProductGallery({ product, images, discount = 0 }) {
   return (
     <div className="flex flex-col-reverse gap-4 md:flex-row">
       {gallery.length > 1 && (
-        <div className="flex gap-3 md:flex-col">
+        <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-col md:overflow-visible md:px-0 md:pb-0">
           {gallery.map((image) => (
             <button
               key={image.id}
               onClick={() => setActiveImage(image.url)}
               aria-label={`Show image of ${product.name}`}
               aria-pressed={heroImage === image.url}
-              className={`aspect-[3/4] w-16 overflow-hidden bg-surface-container transition-all md:w-20 ${
+              className={`aspect-[3/4] w-16 flex-shrink-0 overflow-hidden bg-surface-container transition-all md:w-20 ${
                 heroImage === image.url
                   ? "ring-2 ring-ink ring-offset-2 ring-offset-surface"
                   : "opacity-70 hover:opacity-100"

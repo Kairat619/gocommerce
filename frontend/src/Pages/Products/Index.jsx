@@ -1,4 +1,5 @@
 import { Head, router, useForm } from "@inertiajs/react";
+import { useState } from "react";
 import StoreLayout from "../../Components/StoreLayout";
 import Pagination from "../../Components/Pagination";
 import Container from "../../Components/UI/Container";
@@ -7,6 +8,7 @@ import ProductFilters from "../../Components/Commerce/ProductFilters";
 import ProductGrid from "../../Components/Commerce/ProductGrid";
 import { pageTitle } from "../../lib/brand";
 import { asList, asPagination } from "../../lib/props";
+import cn from "../../lib/cn";
 
 /** @param {import('../../types/pages').ProductsIndexProps} props */
 export default function ProductsIndex({
@@ -21,6 +23,11 @@ export default function ProductsIndex({
   const items = asList(products);
   const categoryList = asList(categories);
   const pages = asPagination(pagination);
+
+  // On a phone the filter panel sits above the grid, so it must collapse or
+  // the shopper scrolls past a full form before seeing a single product.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const { data, setData } = useForm({
     q: search || "",
@@ -44,6 +51,8 @@ export default function ProductsIndex({
       preserveState: true,
       preserveScroll: true,
       replace: true,
+      onStart: () => setLoading(true),
+      onFinish: () => setLoading(false),
     });
   }
 
@@ -62,7 +71,10 @@ export default function ProductsIndex({
     visit({});
   }
 
-  const hasActiveFilters = Boolean(category || min_price || max_price || search);
+  const activeFilterCount = [search, category, min_price, max_price].filter(
+    Boolean
+  ).length;
+  const hasActiveFilters = activeFilterCount > 0;
 
   const activeCategory = categoryList.find((c) => c.slug === category);
   const heading = search
@@ -93,18 +105,48 @@ export default function ProductsIndex({
 
       <Container className="gap-12 py-12 lg:flex">
         <aside className="mb-10 w-full flex-shrink-0 lg:mb-0 lg:w-64">
-          <ProductFilters
-            categories={categoryList}
-            values={data}
-            onChange={setData}
-            onSelectCategory={selectCategory}
-            onSubmit={applyFilters}
-            onClear={clearFilters}
-            showClear={hasActiveFilters}
-          />
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            aria-expanded={filtersOpen}
+            aria-controls="product-filters"
+            className="flex w-full items-center justify-between border border-ink/20 px-4 py-3 text-label-lg font-semibold uppercase tracking-[0.1em] text-ink lg:hidden"
+          >
+            <span>
+              Filters
+              {activeFilterCount > 0 && ` (${activeFilterCount})`}
+            </span>
+            <span aria-hidden="true" className="text-outline">
+              {filtersOpen ? "−" : "+"}
+            </span>
+          </button>
+
+          <div
+            id="product-filters"
+            className={cn(
+              "mt-6 lg:mt-0",
+              filtersOpen ? "block" : "hidden lg:block"
+            )}
+          >
+            <ProductFilters
+              categories={categoryList}
+              values={data}
+              onChange={setData}
+              onSelectCategory={selectCategory}
+              onSubmit={applyFilters}
+              onClear={clearFilters}
+              showClear={hasActiveFilters}
+            />
+          </div>
         </aside>
 
-        <div className="flex-1">
+        <div
+          className={cn(
+            "flex-1 transition-opacity duration-200",
+            loading && "opacity-50"
+          )}
+          aria-busy={loading}
+        >
           {items.length === 0 ? (
             <EmptyState
               title="No products found"

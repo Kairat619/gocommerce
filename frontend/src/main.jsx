@@ -21,7 +21,9 @@ createInertiaApp({
       </ThemeProvider>
     );
   },
+  // The accent token's default value. Inertia reads this before React mounts,
+  // so it cannot come from a CSS custom property.
   progress: {
-    color: "#4f46e5",
+    color: "#C5A059",
   },
 });
