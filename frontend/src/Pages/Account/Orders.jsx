@@ -1,82 +1,77 @@
 import { Head, Link } from "@inertiajs/react";
 import StoreLayout from "../../Components/StoreLayout";
 import Pagination from "../../Components/Pagination";
+import Button from "../../Components/UI/Button";
+import EmptyState from "../../Components/UI/EmptyState";
+import OrderStatus from "../../Components/Commerce/OrderStatus";
+import { formatMoney } from "../../lib/money";
+import { shortOrderId } from "../../lib/order";
+import { asList, asPagination } from "../../lib/props";
+import { pageTitle } from "../../lib/brand";
 
-const statusColors = {
-  pending: "bg-yellow-100 text-yellow-800",
-  confirmed: "bg-blue-100 text-blue-800",
-  processing: "bg-indigo-100 text-indigo-800",
-  shipped: "bg-purple-100 text-purple-800",
-  delivered: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
-};
-
+/** @param {import('../../types/pages').AccountOrdersProps} props */
 export default function AccountOrders({ orders, pagination }) {
+  const rows = asList(orders);
+  const pages = asPagination(pagination);
+
   return (
     <StoreLayout>
-      <Head title="Order History" />
+      <Head title={pageTitle("Order History")} />
 
       <div className="mx-auto max-w-4xl">
-        <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Order History</h1>
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-display-md text-ink">Order History</h1>
           <Link
             href="/account"
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+            className="text-label-sm font-semibold uppercase tracking-[0.1em] text-outline transition-colors hover:text-accent"
           >
-            ← Back to Account
+            &larr; Back to Account
           </Link>
         </div>
 
-        {orders.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white py-16 text-center">
-            <p className="text-lg text-gray-500">You haven't placed any orders yet.</p>
-            <Link
-              href="/products"
-              className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500"
-            >
+        {rows.length === 0 ? (
+          <EmptyState
+            title="No orders yet"
+            description="When you place an order it will appear here."
+          >
+            <Button href="/products" variant="primary" size="md">
               Start Shopping
-            </Link>
-          </div>
+            </Button>
+          </EmptyState>
         ) : (
-          <div className="space-y-4">
-            {orders.map((order) => (
-              <Link
-                key={order.id}
-                href={`/account/orders/${order.id}`}
-                className="block rounded-xl border border-gray-200 bg-white p-6 transition-shadow hover:shadow-md"
-              >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <ul className="divide-y divide-ink/10 border-y border-ink/10">
+            {rows.map((order) => (
+              <li key={order.id}>
+                <Link
+                  href={`/account/orders/${order.id}`}
+                  className="group flex flex-col gap-4 py-6 transition-colors sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div>
-                    <div className="flex items-center gap-3">
-                      <p className="font-mono text-sm text-gray-500">
-                        #{order.id.slice(0, 8)}...
+                    <div className="flex flex-wrap items-center gap-3">
+                      <p className="font-mono text-body-sm text-outline">
+                        #{shortOrderId(order.id)}
                       </p>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${
-                          statusColors[order.status] || "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {order.status}
-                      </span>
+                      <OrderStatus status={order.status} size="md" />
                     </div>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1.5 text-body-sm text-muted-foreground">
                       {order.created_at}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-semibold text-gray-900">
-                      ${order.total}
+                  <div className="flex items-center gap-4">
+                    <p className="text-headline-md font-semibold text-ink">
+                      {formatMoney(order.total)}
                     </p>
+                    <span className="text-outline transition-transform duration-200 group-hover:translate-x-1">
+                      &rarr;
+                    </span>
                   </div>
-                </div>
-              </Link>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
 
-        <div className="mt-8">
-          <Pagination pagination={pagination} />
-        </div>
+        <Pagination pagination={pages} />
       </div>
     </StoreLayout>
   );

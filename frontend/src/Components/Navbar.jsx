@@ -1,6 +1,8 @@
 import { Link, router, usePage } from "@inertiajs/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CartIcon from "./CartIcon";
+import Container from "./UI/Container";
+import { BRAND_NAME } from "../lib/brand";
 
 const navLinks = [
   { label: "New Arrivals", href: "/products" },
@@ -13,6 +15,40 @@ export default function Navbar() {
   const user = auth?.user;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+
+  // A dropdown that only closes when you click its own trigger is a trap:
+  // click anywhere else and it follows you down the page.
+  useEffect(() => {
+    if (!userMenuOpen) return undefined;
+
+    const onPointerDown = (e) => {
+      if (!userMenuRef.current?.contains(e.target)) setUserMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [userMenuOpen]);
+
+  // Escape closes whichever menu is open.
+  useEffect(() => {
+    if (!userMenuOpen && !mobileMenuOpen) return undefined;
+
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      setUserMenuOpen(false);
+      setMobileMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [userMenuOpen, mobileMenuOpen]);
+
+  // Navigating away must not leave a menu hanging open behind the new page.
+  useEffect(() => {
+    return router.on("navigate", () => {
+      setUserMenuOpen(false);
+      setMobileMenuOpen(false);
+    });
+  }, []);
 
   return (
     <header className="sticky top-0 z-50">
@@ -23,13 +59,13 @@ export default function Navbar() {
       </div>
 
       <div className="border-b border-ink/10 bg-surface/85 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4 md:px-8 lg:px-12">
+        <Container className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-10">
             <Link
               href="/"
               className="font-serif text-2xl font-bold tracking-tight text-ink"
             >
-              ShopNest
+              {BRAND_NAME}
             </Link>
             <nav className="hidden items-center gap-8 md:flex">
               {navLinks.map((link) => (
@@ -47,9 +83,11 @@ export default function Navbar() {
           <div className="hidden items-center gap-2 md:flex">
             <CartIcon />
             {user ? (
-              <div className="relative">
+              <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  aria-expanded={userMenuOpen}
+                  aria-haspopup="true"
                   className="flex items-center gap-2 px-3 py-1.5 text-body-sm font-medium text-ink transition-colors hover:text-accent"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-label-sm font-semibold text-white">
@@ -139,7 +177,8 @@ export default function Navbar() {
             <CartIcon />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle menu"
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
               className="flex h-10 w-10 items-center justify-center text-ink"
             >
               <svg
@@ -165,7 +204,7 @@ export default function Navbar() {
               </svg>
             </button>
           </div>
-        </div>
+        </Container>
 
         {mobileMenuOpen && (
           <div className="border-t border-ink/10 bg-surface md:hidden">

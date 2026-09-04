@@ -1,0 +1,30 @@
+/*
+ * Design token custom properties.
+ *
+ * Values are space-separated RGB channels so Tailwind's `<alpha-value>`
+ * modifiers (`bg-ink/90`, `border-ink/10`) keep working. They mirror
+ * `colorChannels` in ./index.js — change both together.
+ *
+ * This file is what a theme replaces. Swapping these nine declarations
+ * re-skins the entire storefront without touching a single class name,
+ * a component, or any commerce logic.
+ */
+
+:root {
+  /* Page and panel grounds */
+  --color-surface: 248 249 250;
+  --color-surface-container: 237 238 239;
+
+  /* Primary foreground / inverse ground */
+  --color-ink: 33 37 41;
+  --color-ink-container: 12 16 20;
+
+  /* Brand accent */
+  --color-accent: 197 160 89;
+  --color-accent-soft: 231 216 182;
+
+  /* Secondary surfaces and text */
+  --color-muted: 243 244 245;
+  --color-muted-foreground: 117 119 123;
+  --color-outline: 117 119 123;
+}

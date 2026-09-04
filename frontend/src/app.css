@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif:wght@400;600;700&display=swap");
+@import "./theme/tokens/tokens.css";
 
 @tailwind base;
 @tailwind components;
@@ -7,8 +8,8 @@
 @layer base {
   body {
     font-family: "Inter", system-ui, -apple-system, sans-serif;
-    background-color: #f8f9fa;
-    color: #212529;
+    background-color: rgb(var(--color-surface));
+    color: rgb(var(--color-ink));
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -18,6 +19,26 @@
   h3,
   h4 {
     font-family: "Noto Serif", Georgia, serif;
+  }
+
+  /*
+   * A visible focus ring for everything reached by keyboard.
+   *
+   * Many controls are bare <button>s — gallery thumbnails, filter category
+   * links, the quantity stepper, cart remove. Without this they fall back to
+   * the browser default, which is inconsistent across browsers and invisible
+   * against dark sections. :focus-visible means pointer users never see it.
+   */
+  :focus-visible {
+    outline: 2px solid rgb(var(--color-accent));
+    outline-offset: 2px;
+  }
+
+  /* Controls that paint their own focus treatment opt out. */
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
   }
 }
 
