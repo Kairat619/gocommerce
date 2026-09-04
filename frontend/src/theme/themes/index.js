@@ -17,7 +17,7 @@ export const themes = {
 };
 
 /** The theme the storefront currently renders. */
-export const ACTIVE_THEME = "default";
+export const ACTIVE_THEME = "luxury";
 
 /** Look up a theme by name, falling back to the default rather than crashing. */
 export function resolveTheme(name = ACTIVE_THEME) {
