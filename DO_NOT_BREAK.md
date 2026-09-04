@@ -233,3 +233,33 @@ Then walk the flows above manually. Minimum smoke path:
 3. Login as admin → dashboard → product list → edit a product → save
 4. Product listing with a search term **and** a category **and** a price range,
    then page 2, and confirm the filters survive
+
+---
+
+## Validation record
+
+Last full pass: 2026-09-04, against a real PostgreSQL 16 (`docker compose up -d`)
+with the server built and run in **production** mode (`APP_ENV=production`), so
+the built-asset path and the Vite manifest were exercised rather than the dev
+server.
+
+**61 end-to-end HTTP checks passed** using the Inertia JSON protocol
+(`X-Inertia: true`), which asserts the real component names and prop keys
+rather than just status codes.
+
+Reproduce with:
+
+```bash
+docker compose up -d
+go build -o server.exe ./cmd/server/
+APP_ENV=production SESSION_KEY=<any> PORT=8099 ./server.exe
+```
+
+Then walk the flows in this document. Seeded logins: `admin@gocommerce.com`
+and `jane@example.com`, password `password`.
+
+Two static checks are worth re-running after any prop change; both are simple
+scripts over the Go handlers and the page components:
+
+1. every prop a page destructures is one its handler sends
+2. every `Render(w, r, "Pages/X", …)` target has a matching `Pages/X.jsx`
