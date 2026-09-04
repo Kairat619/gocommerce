@@ -1,6 +1,6 @@
 import { Head, Link } from "@inertiajs/react";
 import StoreLayout from "../Components/StoreLayout";
-import ProductCard from "../Components/ProductCard";
+import ProductGrid from "../Components/Commerce/ProductGrid";
 import SectionHeading from "../Components/UI/SectionHeading";
 import Button from "../Components/UI/Button";
 import Container from "../Components/UI/Container";
@@ -129,11 +129,7 @@ export default function Welcome({ featured_products, categories }) {
               actionLabel="Shop All"
               actionHref="/products"
             />
-            <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:gap-x-6 lg:grid-cols-4">
-              {featured.map((product, i) => (
-                <ProductCard key={product.id} product={product} index={i} />
-              ))}
-            </div>
+            <ProductGrid products={featured} columns="four" />
           </Container>
         </section>
       )}

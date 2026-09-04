@@ -1,8 +1,8 @@
 import { Link, router } from "@inertiajs/react";
-import Badge from "./UI/Badge";
-import Price from "./Commerce/Price";
-import { comparePrice, discountPercent, isInStock } from "../lib/product";
-import { productImage } from "../lib/image";
+import Badge from "../UI/Badge";
+import Price from "./Price";
+import { comparePrice, discountPercent, isInStock } from "../../lib/product";
+import { productImage } from "../../lib/image";
 
 export default function ProductCard({ product, index = 0 }) {
   const inStock = isInStock(product);

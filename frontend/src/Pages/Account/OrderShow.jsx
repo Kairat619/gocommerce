@@ -7,6 +7,7 @@ import { asList } from "../../lib/props";
 
 /** @param {import('../../types/pages').AccountOrderShowProps} props */
 export default function AccountOrderShow({ order, items }) {
+  const lines = asList(items);
   return (
     <StoreLayout>
       <Head title={`Order #${shortOrderId(order.id)}`} />
@@ -50,7 +51,7 @@ export default function AccountOrderShow({ order, items }) {
                 Items
               </h2>
               <ul className="divide-y divide-gray-200">
-                {items.map((item) => (
+                {lines.map((item) => (
                   <li key={item.id} className="flex gap-4 py-4">
                     <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
                       {item.product_image ? (
