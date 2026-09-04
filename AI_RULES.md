@@ -186,22 +186,80 @@ After any styling work run `npm run build`. A dev-server check will not catch th
 
 ## 6. Theme rules
 
-Theme code must be replaceable without rewriting commerce logic.
+The theme engine is built. It lives in `frontend/src/theme/` and
+`frontend/src/sections/`, and it is how a new storefront identity gets made.
 
-- Tokens are CSS custom properties; Tailwind colors point at `var(--…)`.
-  Switching themes swaps variables, never class names.
-- Components take a **semantic** `variant`, resolved through the active theme.
+### What a theme is
+
+A theme is one file: `theme/themes/<name>/index.js`. It owns exactly four
+things.
+
+| Key | Meaning |
+|---|---|
+| `colors` | RGB channels, applied to `document.documentElement` at runtime |
+| `typography` | font stacks |
+| `components` | per-component variant **names** |
+| `homepage` | an ordered composition of sections |
+
+Switch the storefront by changing `ACTIVE_THEME` in `theme/themes/index.js`.
+Two themes ship: `default` (the current identity) and `luxury` (a worked
+example — see `examples/luxury-style/UI_NOTES.md`).
+
+### The one rule that matters
+
+**A theme never contains a Tailwind class string, and never imports a
+component.** It picks a section by name and a variant by name; the component
+owns the literal classes.
+
+```js
+// WRONG — the theme is writing CSS, and the purge may never see this
+{ section: "Hero", props: { height: "min-h-[86vh]" } }
+
+// RIGHT — the theme names a variant; HeroBanner maps it to a literal class
+{ section: "Hero", props: { height: "tall" } }
+```
+
+This is not style preference. Tailwind scans source files for literal class
+strings; a class that only ever exists as theme data assembled at runtime
+compiles away, and the page renders unstyled **in production only**. Keeping
+every class inside a component's static variant map is what makes the engine
+safe.
+
+Verify after any theme or variant work:
+
+```bash
+cd frontend && npm run build
+grep -F '.lg\:grid-cols-4' ../public/build/assets/*.css   # must match
+```
+
+### Adding a theme
+
+1. Copy `theme/themes/default/`, change the values, register it in
+   `theme/themes/index.js`.
+2. If you need a look no variant provides, add a **named variant** to the
+   section or component — never a class string in the theme.
+3. Build, and confirm the new classes are in the compiled CSS.
+
+### Adding a section
+
+Create it under `sections/<group>/`, then register it in `sections/registry.js`
+with a `select` function naming the page props it consumes. `select` is
+explicit rather than a naming convention so a reader can see at a glance which
+props each section reads.
+
+### Boundaries
+
 - Sections receive commerce data as props and own only presentation.
-- Homepage composition is data (`theme.homepage` is an ordered list of section
-  names), not hand-written JSX.
+- Page composition is data (`theme.homepage`), not hand-written JSX. The
+  homepage is 34 lines because of this; keep it that way.
+- Theme selection is a frontend constant. Making it store-configurable means a
+  `store_settings` column and a new page prop — a backend change, so ask first.
 - The **admin** area is application chrome, not storefront identity. It sits
-  outside the theme engine.
+  outside the theme engine and keeps its own palette. Do not theme it.
 
 A future agent should be able to produce a Luxury, Electronics, or Minimal
 Furniture theme without touching Go, the database, auth, sessions, checkout,
-or orders.
-
----
+or orders. `examples/` holds design references to reason from.
 
 ## 7. Quality bar
 

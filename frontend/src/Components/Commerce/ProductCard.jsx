@@ -3,8 +3,20 @@ import Badge from "../UI/Badge";
 import Price from "./Price";
 import { comparePrice, discountPercent, isInStock } from "../../lib/product";
 import { productImage } from "../../lib/image";
+import { useComponentVariant } from "../../theme/ThemeProvider";
+import cn from "../../lib/cn";
+
+/**
+ * Image proportions come from the theme by NAME; the class strings live here
+ * so Tailwind can see them.
+ */
+const aspects = {
+  portrait: "aspect-[3/4]",
+  square: "aspect-square",
+};
 
 export default function ProductCard({ product, index = 0 }) {
+  const { aspect } = useComponentVariant("ProductCard", { aspect: "portrait" });
   const inStock = isInStock(product);
   const compareAt = comparePrice(product);
   const discount = discountPercent(product);
@@ -26,7 +38,12 @@ export default function ProductCard({ product, index = 0 }) {
       className="group block animate-fade-up"
       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
     >
-      <div className="relative mb-5 aspect-[3/4] overflow-hidden bg-surface-container">
+      <div
+        className={cn(
+          "relative mb-5 overflow-hidden bg-surface-container",
+          aspects[aspect] || aspects.portrait
+        )}
+      >
         {image ? (
           <img
             src={image}

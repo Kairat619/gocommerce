@@ -110,6 +110,27 @@ Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`API_CONTRACT.md`](API_CON
 
 ---
 
+## Theme engine
+
+- `ACTIVE_THEME` in `frontend/src/theme/themes/index.js` selects the storefront
+  identity. Both installed themes (`default`, `luxury`) must build and render.
+- The `default` theme reproduces the storefront's original homepage section for
+  section — treat it as the reference, not a starting point to edit casually.
+- A theme file contains **no Tailwind class strings and no component imports**.
+  Variant names only. A class that exists only as theme data is invisible to
+  Tailwind's purge and vanishes in the production build.
+- Section variant class maps live in the section component, statically.
+- `sections/registry.js` `select` functions name the page props each section
+  consumes. Changing one silently starves a section of its data.
+- An unknown section name is skipped with a dev warning, never thrown — a typo
+  in a theme must not blank the storefront.
+- `ThemeProvider` writes colours to `document.documentElement`, not a wrapper
+  element: `body` takes its background from `var(--color-surface)`.
+- `theme/tokens/tokens.css` stays the build-time default so the first paint is
+  never unstyled.
+
+---
+
 ## Data shapes
 
 These are load-bearing. Breaking one breaks pages silently.
