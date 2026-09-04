@@ -1,19 +1,14 @@
 import { Link, router } from "@inertiajs/react";
+import Badge from "./UI/Badge";
+import Price from "./Commerce/Price";
+import { comparePrice, discountPercent, isInStock } from "../lib/product";
+import { productImage } from "../lib/image";
 
 export default function ProductCard({ product, index = 0 }) {
-  const inStock = product.stock_quantity > 0;
-  const hasCompare =
-    product.compare_at_price &&
-    product.compare_at_price !== "0.00" &&
-    Number(product.compare_at_price) > Number(product.price);
-
-  const discount = hasCompare
-    ? Math.round(
-        ((Number(product.compare_at_price) - Number(product.price)) /
-          Number(product.compare_at_price)) *
-          100
-      )
-    : 0;
+  const inStock = isInStock(product);
+  const compareAt = comparePrice(product);
+  const discount = discountPercent(product);
+  const image = productImage(product);
 
   function quickAdd(e) {
     e.preventDefault();
@@ -32,9 +27,9 @@ export default function ProductCard({ product, index = 0 }) {
       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
     >
       <div className="relative mb-5 aspect-[3/4] overflow-hidden bg-surface-container">
-        {product.image_url ? (
+        {image ? (
           <img
-            src={product.image_url}
+            src={image}
             alt={product.name}
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
@@ -59,19 +54,19 @@ export default function ProductCard({ product, index = 0 }) {
 
         <div className="absolute left-4 top-4 flex flex-col gap-2">
           {product.is_featured && (
-            <span className="bg-white/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-ink">
+            <Badge tone="neutral" size="sm">
               Exclusive
-            </span>
+            </Badge>
           )}
           {discount > 0 && (
-            <span className="bg-accent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-white">
+            <Badge tone="accent" size="sm">
               -{discount}% Off
-            </span>
+            </Badge>
           )}
           {!inStock && (
-            <span className="bg-ink px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-white">
+            <Badge tone="ink" size="sm">
               Sold Out
-            </span>
+            </Badge>
           )}
         </div>
 
@@ -106,16 +101,12 @@ export default function ProductCard({ product, index = 0 }) {
         <h3 className="font-serif text-body-lg text-ink transition-colors line-clamp-1 group-hover:text-accent">
           {product.name}
         </h3>
-        <div className="flex items-baseline gap-2 pt-1">
-          <span className="text-headline-md font-semibold text-ink">
-            ${product.price}
-          </span>
-          {hasCompare && (
-            <span className="text-body-sm text-outline line-through">
-              ${product.compare_at_price}
-            </span>
-          )}
-        </div>
+        <Price
+          amount={product.price}
+          compareAt={compareAt}
+          size="md"
+          className="pt-1"
+        />
       </div>
     </Link>
   );

@@ -1,6 +1,8 @@
 import { Link, router, usePage } from "@inertiajs/react";
 import { useState } from "react";
 import CartIcon from "./CartIcon";
+import Container from "./UI/Container";
+import { BRAND_NAME } from "../lib/brand";
 
 const navLinks = [
   { label: "New Arrivals", href: "/products" },
@@ -23,13 +25,13 @@ export default function Navbar() {
       </div>
 
       <div className="border-b border-ink/10 bg-surface/85 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4 md:px-8 lg:px-12">
+        <Container className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-10">
             <Link
               href="/"
               className="font-serif text-2xl font-bold tracking-tight text-ink"
             >
-              ShopNest
+              {BRAND_NAME}
             </Link>
             <nav className="hidden items-center gap-8 md:flex">
               {navLinks.map((link) => (
@@ -165,7 +167,7 @@ export default function Navbar() {
               </svg>
             </button>
           </div>
-        </div>
+        </Container>
 
         {mobileMenuOpen && (
           <div className="border-t border-ink/10 bg-surface md:hidden">

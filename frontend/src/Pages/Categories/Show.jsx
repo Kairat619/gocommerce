@@ -1,29 +1,34 @@
-import { Head, Link } from "@inertiajs/react";
+import { Head } from "@inertiajs/react";
 import StoreLayout from "../../Components/StoreLayout";
 import ProductCard from "../../Components/ProductCard";
 import Pagination from "../../Components/Pagination";
 import Button from "../../Components/UI/Button";
+import Container from "../../Components/UI/Container";
+import Breadcrumbs from "../../Components/Breadcrumbs";
+import { decorativeImage } from "../../lib/image";
+import { pageTitle } from "../../lib/brand";
 
 export default function CategoriesShow({ category, products, pagination }) {
   return (
     <StoreLayout full>
-      <Head title={`${category.name} | ShopNest`} />
+      <Head title={pageTitle(category.name)} />
 
       {/* Category hero */}
       <section className="relative overflow-hidden bg-ink">
         <img
-          src={`https://picsum.photos/seed/shopnest-${category.slug}/1920/700`}
+          src={decorativeImage(`category-${category.slug}`, 1920, 700)}
           alt={category.name}
           className="absolute inset-0 h-full w-full object-cover opacity-40"
         />
-        <div className="relative mx-auto max-w-screen-2xl px-4 py-20 md:px-8 md:py-28 lg:px-12">
-          <nav className="mb-5 flex items-center gap-2 text-label-sm uppercase tracking-[0.1em] text-white/70">
-            <Link href="/categories" className="transition-colors hover:text-accent">
-              Collections
-            </Link>
-            <span>/</span>
-            <span className="text-white">{category.name}</span>
-          </nav>
+        <Container className="relative py-20 md:py-28">
+          <Breadcrumbs
+            tone="inverse"
+            className="mb-5"
+            items={[
+              { label: "Collections", href: "/categories" },
+              { label: category.name },
+            ]}
+          />
           <h1 className="max-w-2xl text-display-lg text-white">
             {category.name}
           </h1>
@@ -32,10 +37,10 @@ export default function CategoriesShow({ category, products, pagination }) {
               {category.description}
             </p>
           )}
-        </div>
+        </Container>
       </section>
 
-      <div className="mx-auto max-w-screen-2xl px-4 py-14 md:px-8 md:py-20 lg:px-12">
+      <Container className="py-14 md:py-20">
         {products.length === 0 ? (
           <div className="border border-dashed border-ink/15 py-24 text-center">
             <p className="font-serif text-headline-md text-ink">
@@ -60,7 +65,7 @@ export default function CategoriesShow({ category, products, pagination }) {
             <Pagination pagination={pagination} />
           </>
         )}
-      </div>
+      </Container>
     </StoreLayout>
   );
 }

@@ -1,5 +1,6 @@
 import { Head, Link } from "@inertiajs/react";
 import StoreLayout from "../../Components/StoreLayout";
+import { formatMoney } from "../../lib/money";
 
 const statusColors = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -88,11 +89,11 @@ export default function AccountOrderShow({ order, items }) {
                         </p>
                       )}
                       <p className="text-sm text-gray-500">
-                        Qty: {item.quantity} × ${item.unit_price}
+                        Qty: {item.quantity} × {formatMoney(item.unit_price)}
                       </p>
                     </div>
                     <p className="text-sm font-medium text-gray-900">
-                      ${item.total}
+                      {formatMoney(item.total)}
                     </p>
                   </li>
                 ))}

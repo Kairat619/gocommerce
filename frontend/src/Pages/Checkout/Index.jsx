@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import { useState } from "react";
 import StoreLayout from "../../Components/StoreLayout";
+import { formatMoney, formatLineTotal } from "../../lib/money";
 
 export default function CheckoutIndex({
   cart,
@@ -400,7 +401,7 @@ export default function CheckoutIndex({
                       <p className="text-gray-500">Qty: {item.quantity}</p>
                     </div>
                     <p className="font-medium text-gray-900">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      {formatLineTotal(item.price, item.quantity)}
                     </p>
                   </li>
                 ))}
@@ -409,11 +410,11 @@ export default function CheckoutIndex({
               <div className="space-y-2 border-t border-gray-200 pt-4 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Subtotal</span>
-                  <span className="font-medium">${subtotal.toFixed(2)}</span>
+                  <span className="font-medium">{formatMoney(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Tax</span>
-                  <span className="font-medium">${tax.toFixed(2)}</span>
+                  <span className="font-medium">{formatMoney(tax)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Shipping</span>
@@ -421,13 +422,13 @@ export default function CheckoutIndex({
                     {shipping === 0 ? (
                       <span className="text-green-600">Free</span>
                     ) : (
-                      `$${shipping.toFixed(2)}`
+                      formatMoney(shipping)
                     )}
                   </span>
                 </div>
                 {subtotal < free_shipping_threshold && (
                   <p className="text-xs text-indigo-600">
-                    Add ${(free_shipping_threshold - subtotal).toFixed(2)} more
+                    Add {formatMoney(free_shipping_threshold - subtotal)} more
                     for free shipping!
                   </p>
                 )}
@@ -436,7 +437,7 @@ export default function CheckoutIndex({
                     Total
                   </span>
                   <span className="text-base font-semibold text-gray-900">
-                    ${total.toFixed(2)}
+                    {formatMoney(total)}
                   </span>
                 </div>
               </div>

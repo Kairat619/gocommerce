@@ -3,13 +3,9 @@ import StoreLayout from "../Components/StoreLayout";
 import ProductCard from "../Components/ProductCard";
 import SectionHeading from "../Components/UI/SectionHeading";
 import Button from "../Components/UI/Button";
-
-const categoryImages = [
-  "https://picsum.photos/seed/shopnest-electronics/800/1000",
-  "https://picsum.photos/seed/shopnest-apparel/800/1000",
-  "https://picsum.photos/seed/shopnest-home/800/1000",
-  "https://picsum.photos/seed/shopnest-books/800/1000",
-];
+import Container from "../Components/UI/Container";
+import { decorativeImage } from "../lib/image";
+import { BRAND_NAME } from "../lib/brand";
 
 const valueProps = [
   {
@@ -32,17 +28,17 @@ export default function Welcome({ featured_products = [], categories = [] }) {
 
   return (
     <StoreLayout full>
-      <Head title="ShopNest — Curated Home & Lifestyle" />
+      <Head title={`${BRAND_NAME} — Curated Home & Lifestyle`} />
 
       {/* Hero */}
       <section className="relative min-h-[78vh] overflow-hidden bg-ink">
         <img
-          src="https://picsum.photos/seed/shopnest-hero-lifestyle/1920/1200"
+          src={decorativeImage("shopnest-hero-lifestyle", 1920, 1200)}
           alt="Curated home and lifestyle collection"
           className="absolute inset-0 h-full w-full object-cover opacity-70"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/70 to-transparent" />
-        <div className="relative mx-auto flex min-h-[78vh] max-w-screen-2xl items-center px-4 md:px-8 lg:px-12">
+        <Container className="relative flex min-h-[78vh] items-center">
           <div className="max-w-xl animate-fade-up py-24 text-white">
             <span className="mb-5 block text-label-lg font-semibold uppercase tracking-[0.2em] text-accent">
               New Collection 2025
@@ -63,12 +59,12 @@ export default function Welcome({ featured_products = [], categories = [] }) {
               </Button>
             </div>
           </div>
-        </div>
+        </Container>
       </section>
 
       {/* Value props */}
       <section className="border-b border-ink/10 bg-surface">
-        <div className="mx-auto grid max-w-screen-2xl grid-cols-1 divide-y divide-ink/10 px-4 md:grid-cols-3 md:divide-x md:divide-y-0 md:px-8 lg:px-12">
+        <Container className="grid grid-cols-1 divide-y divide-ink/10 md:grid-cols-3 md:divide-x md:divide-y-0">
           {valueProps.map((vp) => (
             <div key={vp.title} className="px-2 py-8 md:px-8">
               <h3 className="text-headline-md font-semibold text-ink">
@@ -79,12 +75,12 @@ export default function Welcome({ featured_products = [], categories = [] }) {
               </p>
             </div>
           ))}
-        </div>
+        </Container>
       </section>
 
       {/* Shop by category */}
       {cats.length > 0 && (
-        <section className="mx-auto max-w-screen-2xl px-4 py-16 md:px-8 md:py-24 lg:px-12">
+        <Container as="section" className="py-16 md:py-24">
           <SectionHeading
             eyebrow="Curated Categories"
             title="Shop by Collection"
@@ -92,14 +88,14 @@ export default function Welcome({ featured_products = [], categories = [] }) {
             actionHref="/categories"
           />
           <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
-            {cats.map((cat, i) => (
+            {cats.map((cat) => (
               <Link
                 key={cat.slug}
                 href={`/categories/${cat.slug}`}
                 className="group relative aspect-[3/4] overflow-hidden bg-surface-container"
               >
                 <img
-                  src={categoryImages[i % categoryImages.length]}
+                  src={decorativeImage(`category-${cat.slug}`, 800, 1000)}
                   alt={cat.name}
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
@@ -117,13 +113,13 @@ export default function Welcome({ featured_products = [], categories = [] }) {
               </Link>
             ))}
           </div>
-        </section>
+        </Container>
       )}
 
       {/* Featured products */}
       {featured.length > 0 && (
         <section className="border-y border-ink/10 bg-white">
-          <div className="mx-auto max-w-screen-2xl px-4 py-16 md:px-8 md:py-24 lg:px-12">
+          <Container className="py-16 md:py-24">
             <SectionHeading
               eyebrow="Editor's Choice"
               title="Featured This Season"
@@ -136,21 +132,21 @@ export default function Welcome({ featured_products = [], categories = [] }) {
                 <ProductCard key={product.id} product={product} index={i} />
               ))}
             </div>
-          </div>
+          </Container>
         </section>
       )}
 
       {/* Editorial CTA band */}
       <section className="relative overflow-hidden bg-ink">
         <img
-          src="https://picsum.photos/seed/shopnest-editorial-band/1920/900"
+          src={decorativeImage("shopnest-editorial-band", 1920, 900)}
           alt=""
           aria-hidden="true"
           className="absolute inset-0 h-full w-full object-cover opacity-30"
         />
-        <div className="relative mx-auto max-w-screen-2xl px-4 py-20 text-center md:px-8 md:py-28 lg:px-12">
+        <Container className="relative py-20 text-center md:py-28">
           <span className="mb-4 block text-label-lg font-semibold uppercase tracking-[0.2em] text-accent">
-            The ShopNest Promise
+            The {BRAND_NAME} Promise
           </span>
           <h2 className="mx-auto max-w-2xl text-display-lg text-white">
             Ready to upgrade your lifestyle?
@@ -164,7 +160,7 @@ export default function Welcome({ featured_products = [], categories = [] }) {
               Start Shopping
             </Button>
           </div>
-        </div>
+        </Container>
       </section>
     </StoreLayout>
   );

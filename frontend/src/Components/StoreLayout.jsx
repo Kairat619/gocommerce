@@ -1,4 +1,5 @@
 import Navbar from "./Navbar";
+import Container from "./UI/Container";
 import Footer from "./Footer";
 import FlashMessage from "./FlashMessage";
 
@@ -10,9 +11,7 @@ export default function StoreLayout({ children, full = false }) {
         {full ? (
           children
         ) : (
-          <div className="mx-auto w-full max-w-screen-2xl px-4 py-10 md:px-8 md:py-14 lg:px-12">
-            {children}
-          </div>
+          <Container className="py-10 md:py-14">{children}</Container>
         )}
       </main>
       <Footer />

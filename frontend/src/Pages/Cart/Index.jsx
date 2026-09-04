@@ -1,5 +1,6 @@
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import StoreLayout from "../../Components/StoreLayout";
+import { formatMoney, formatLineTotal } from "../../lib/money";
 
 export default function CartIndex({ cart }) {
   const { flash } = usePage().props;
@@ -110,7 +111,7 @@ export default function CartIndex({ cart }) {
                             )}
                           </div>
                           <p className="text-sm font-semibold text-gray-900 sm:text-base">
-                            ${(item.price * item.quantity).toFixed(2)}
+                            {formatLineTotal(item.price, item.quantity)}
                           </p>
                         </div>
                       </div>
@@ -184,7 +185,7 @@ export default function CartIndex({ cart }) {
                 <div className="text-right">
                   <p className="text-sm text-gray-500">Subtotal</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    ${totalPrice.toFixed(2)}
+                    {formatMoney(totalPrice)}
                   </p>
                 </div>
               </div>

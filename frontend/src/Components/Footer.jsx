@@ -1,4 +1,6 @@
 import { Link } from "@inertiajs/react";
+import Container from "./UI/Container";
+import { BRAND_NAME } from "../lib/brand";
 
 const columns = [
   {
@@ -32,10 +34,10 @@ const socials = ["IG", "TW", "FB"];
 export default function Footer() {
   return (
     <footer className="border-t border-zinc-800 bg-ink-container text-white">
-      <div className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-12 px-4 py-16 md:grid-cols-2 md:px-8 lg:grid-cols-[1.5fr_repeat(3,1fr)] lg:px-12">
+      <Container className="grid grid-cols-1 gap-12 py-16 md:grid-cols-2 lg:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div className="max-w-xs">
           <Link href="/" className="font-serif text-lg font-bold text-white">
-            ShopNest
+            {BRAND_NAME}
           </Link>
           <p className="mt-5 font-serif text-body-sm leading-relaxed text-zinc-400">
             Curating the world's finest minimalist fashion and lifestyle goods
@@ -72,11 +74,13 @@ export default function Footer() {
             </ul>
           </div>
         ))}
-      </div>
+      </Container>
 
       <div className="border-t border-zinc-800">
-        <div className="mx-auto flex max-w-screen-2xl flex-col gap-3 px-4 py-6 text-label-sm text-zinc-400 md:flex-row md:items-center md:justify-between md:px-8 lg:px-12">
-          <p>&copy; {new Date().getFullYear()} ShopNest. All rights reserved.</p>
+        <Container className="flex flex-col gap-3 py-6 text-label-sm text-zinc-400 md:flex-row md:items-center md:justify-between">
+          <p>
+            &copy; {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.
+          </p>
           <div className="flex gap-6">
             <Link href="/products" className="transition-colors hover:text-white">
               Privacy Policy
@@ -88,7 +92,7 @@ export default function Footer() {
               Accessibility
             </Link>
           </div>
-        </div>
+        </Container>
       </div>
     </footer>
   );

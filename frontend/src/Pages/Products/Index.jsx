@@ -3,6 +3,9 @@ import StoreLayout from "../../Components/StoreLayout";
 import ProductCard from "../../Components/ProductCard";
 import Pagination from "../../Components/Pagination";
 import Button from "../../Components/UI/Button";
+import Container from "../../Components/UI/Container";
+import Input from "../../Components/UI/Input";
+import { pageTitle } from "../../lib/brand";
 
 export default function ProductsIndex({
   products,
@@ -64,11 +67,11 @@ export default function ProductsIndex({
 
   return (
     <StoreLayout full>
-      <Head title="Shop | ShopNest" />
+      <Head title={pageTitle("Shop")} />
 
       {/* Editorial header */}
       <section className="border-b border-ink/10 bg-white">
-        <div className="mx-auto max-w-screen-2xl px-4 py-14 md:px-8 md:py-20 lg:px-12">
+        <Container className="py-14 md:py-20">
           <span className="mb-3 block text-label-lg font-semibold uppercase tracking-[0.2em] text-accent">
             The Collection
           </span>
@@ -80,10 +83,10 @@ export default function ProductsIndex({
                   products.length !== 1 ? "s" : ""
                 } available`}
           </p>
-        </div>
+        </Container>
       </section>
 
-      <div className="mx-auto max-w-screen-2xl gap-12 px-4 py-12 md:px-8 lg:flex lg:px-12">
+      <Container className="gap-12 py-12 lg:flex">
         {/* Filters */}
         <aside className="mb-10 w-full flex-shrink-0 lg:mb-0 lg:w-64">
           <form onSubmit={applyFilters} className="space-y-8 lg:sticky lg:top-32">
@@ -91,12 +94,12 @@ export default function ProductsIndex({
               <h3 className="mb-4 text-label-lg font-semibold uppercase tracking-[0.12em] text-ink">
                 Search
               </h3>
-              <input
+              <Input
                 type="text"
                 value={data.q}
                 onChange={(e) => setData("q", e.target.value)}
                 placeholder="Search curated styles..."
-                className="w-full border border-ink/20 bg-white px-4 py-2.5 text-body-sm text-ink placeholder:text-outline focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                aria-label="Search products"
               />
             </div>
 
@@ -141,22 +144,26 @@ export default function ProductsIndex({
                 Price Range
               </h3>
               <div className="flex items-center gap-2">
-                <input
+                <Input
                   type="number"
                   value={data.min_price}
                   onChange={(e) => setData("min_price", e.target.value)}
                   placeholder="Min"
                   min="0"
-                  className="no-spinner w-full border border-ink/20 bg-white px-3 py-2.5 text-body-sm text-ink placeholder:text-outline focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                  size="sm"
+                  className="no-spinner"
+                  aria-label="Minimum price"
                 />
                 <span className="text-outline">&ndash;</span>
-                <input
+                <Input
                   type="number"
                   value={data.max_price}
                   onChange={(e) => setData("max_price", e.target.value)}
                   placeholder="Max"
                   min="0"
-                  className="no-spinner w-full border border-ink/20 bg-white px-3 py-2.5 text-body-sm text-ink placeholder:text-outline focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                  size="sm"
+                  className="no-spinner"
+                  aria-label="Maximum price"
                 />
               </div>
             </div>
@@ -218,7 +225,7 @@ export default function ProductsIndex({
             }
           />
         </div>
-      </div>
+      </Container>
     </StoreLayout>
   );
 }

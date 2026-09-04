@@ -1,19 +1,12 @@
 import { Head, Link } from "@inertiajs/react";
 import StoreLayout from "../../Components/StoreLayout";
-
-const covers = [
-  "https://picsum.photos/seed/shopnest-cat-1/900/1100",
-  "https://picsum.photos/seed/shopnest-cat-2/900/1100",
-  "https://picsum.photos/seed/shopnest-cat-3/900/1100",
-  "https://picsum.photos/seed/shopnest-cat-4/900/1100",
-  "https://picsum.photos/seed/shopnest-cat-5/900/1100",
-  "https://picsum.photos/seed/shopnest-cat-6/900/1100",
-];
+import { decorativeImage } from "../../lib/image";
+import { pageTitle } from "../../lib/brand";
 
 export default function CategoriesIndex({ categories }) {
   return (
     <StoreLayout>
-      <Head title="Collections | ShopNest" />
+      <Head title={pageTitle("Collections")} />
 
       <div className="mb-12">
         <span className="mb-3 block text-label-lg font-semibold uppercase tracking-[0.2em] text-accent">
@@ -27,14 +20,14 @@ export default function CategoriesIndex({ categories }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
-        {categories.map((cat, i) => (
+        {categories.map((cat) => (
           <Link
             key={cat.slug}
             href={`/categories/${cat.slug}`}
             className="group relative aspect-[4/5] overflow-hidden bg-surface-container"
           >
             <img
-              src={covers[i % covers.length]}
+              src={decorativeImage(`category-${cat.slug}`, 900, 1100)}
               alt={cat.name}
               loading="lazy"
               className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"

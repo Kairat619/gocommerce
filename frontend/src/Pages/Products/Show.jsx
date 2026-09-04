@@ -1,8 +1,14 @@
-import { Head, Link, router, usePage } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import { useState } from "react";
 import StoreLayout from "../../Components/StoreLayout";
+import Breadcrumbs from "../../Components/Breadcrumbs";
 import Button from "../../Components/UI/Button";
+import Badge from "../../Components/UI/Badge";
+import Price from "../../Components/Commerce/Price";
 import ProductCard from "../../Components/ProductCard";
+import { formatMoney } from "../../lib/money";
+import { comparePrice, discountPercent, isInStock } from "../../lib/product";
+import { pageTitle } from "../../lib/brand";
 
 export default function ProductsShow({
   product,
@@ -10,25 +16,14 @@ export default function ProductsShow({
   variants,
   related_products,
 }) {
-  const { flash } = usePage().props;
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [activeImage, setActiveImage] = useState(product.image_url || null);
-  const inStock = product.stock_quantity > 0;
+  const inStock = isInStock(product);
 
   const displayPrice = selectedVariant?.price || product.price;
-  const hasComparePrice =
-    product.compare_at_price &&
-    product.compare_at_price !== "0.00" &&
-    Number(product.compare_at_price) > Number(product.price);
-
-  const discount = hasComparePrice
-    ? Math.round(
-        ((Number(product.compare_at_price) - Number(product.price)) /
-          Number(product.compare_at_price)) *
-          100
-      )
-    : 0;
+  const compareAt = comparePrice(product);
+  const discount = discountPercent(product);
 
   const gallery = [];
   if (product.image_url) gallery.push({ id: "main", url: product.image_url });
@@ -46,33 +41,19 @@ export default function ProductsShow({
 
   return (
     <StoreLayout>
-      <Head title={`${product.name} | ShopNest`} />
+      <Head title={pageTitle(product.name)} />
 
-      <nav className="mb-8 flex items-center gap-2 text-label-sm uppercase tracking-[0.1em] text-outline">
-        <Link href="/products" className="transition-colors hover:text-accent">
-          Shop
-        </Link>
-        <span>/</span>
-        <Link
-          href={`/categories/${product.category_slug}`}
-          className="transition-colors hover:text-accent"
-        >
-          {product.category_name}
-        </Link>
-        <span>/</span>
-        <span className="text-ink">{product.name}</span>
-      </nav>
-
-      {flash?.success && (
-        <div className="mb-6 border-l-4 border-green-500 bg-white p-4 text-body-sm text-green-800 shadow-sm">
-          {flash.success}
-        </div>
-      )}
-      {flash?.error && (
-        <div className="mb-6 border-l-4 border-red-500 bg-white p-4 text-body-sm text-red-800 shadow-sm">
-          {flash.error}
-        </div>
-      )}
+      <Breadcrumbs
+        className="mb-8"
+        items={[
+          { label: "Shop", href: "/products" },
+          {
+            label: product.category_name,
+            href: `/categories/${product.category_slug}`,
+          },
+          { label: product.name },
+        ]}
+      />
 
       <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
         {/* Gallery */}
@@ -126,9 +107,9 @@ export default function ProductsShow({
               )}
             </div>
             {discount > 0 && (
-              <span className="absolute left-4 top-4 bg-accent px-3 py-1 text-label-sm font-semibold uppercase tracking-[0.15em] text-white">
+              <Badge tone="accent" className="absolute left-4 top-4">
                 -{discount}% Off
-              </span>
+              </Badge>
             )}
           </div>
         </div>
@@ -140,16 +121,12 @@ export default function ProductsShow({
           </span>
           <h1 className="text-display-md text-ink">{product.name}</h1>
 
-          <div className="mt-5 flex items-baseline gap-3">
-            <span className="text-headline-lg font-semibold text-ink">
-              ${displayPrice}
-            </span>
-            {hasComparePrice && !selectedVariant && (
-              <span className="text-body-lg text-outline line-through">
-                ${product.compare_at_price}
-              </span>
-            )}
-          </div>
+          <Price
+            amount={displayPrice}
+            compareAt={selectedVariant ? null : compareAt}
+            size="lg"
+            className="mt-5"
+          />
 
           {product.description && (
             <div
@@ -176,7 +153,9 @@ export default function ProductsShow({
                   >
                     {variant.name}
                     {variant.price !== product.price && (
-                      <span className="ml-1 opacity-70">(${variant.price})</span>
+                      <span className="ml-1 opacity-70">
+                        ({formatMoney(variant.price)})
+                      </span>
                     )}
                   </button>
                 ))}
