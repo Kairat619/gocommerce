@@ -51,7 +51,7 @@ export default function FlashMessage() {
         <p className="flex-1 text-sm font-medium">{text}</p>
         <button
           onClick={() => setVisible(false)}
-          className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+          className="flex-shrink-0 text-outline transition-colors hover:text-ink"
         >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path

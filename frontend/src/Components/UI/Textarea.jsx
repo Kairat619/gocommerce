@@ -1,10 +1,10 @@
 import cn from "../../lib/cn";
 import { controlBase, controlSizes } from "./controlStyles";
 
-/** A text or number input in the storefront's visual language. */
-export default function Input({ size = "md", className = "", ...props }) {
+/** A multi-line input styled to match Input. */
+export default function Textarea({ size = "md", className = "", ...props }) {
   return (
-    <input
+    <textarea
       className={cn(controlBase, controlSizes[size] || controlSizes.md, className)}
       {...props}
     />

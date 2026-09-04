@@ -1,23 +1,32 @@
-import { Head, Link } from "@inertiajs/react";
+import { Head } from "@inertiajs/react";
+import StoreLayout from "../../Components/StoreLayout";
+import Button from "../../Components/UI/Button";
 
 export default function NotFound() {
   return (
-    <>
+    <StoreLayout>
       <Head title="Page Not Found" />
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="text-center">
-          <h1 className="mb-4 text-6xl font-bold text-gray-300">404</h1>
-          <p className="mb-6 text-lg text-gray-600">
-            The page you&apos;re looking for doesn&apos;t exist.
-          </p>
-          <Link
-            href="/"
-            className="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
-          >
+
+      <div className="py-24 text-center">
+        <p className="text-label-lg font-semibold uppercase tracking-[0.2em] text-accent">
+          Error 404
+        </p>
+        <h1 className="mt-4 text-display-lg text-ink">
+          We couldn&apos;t find that page
+        </h1>
+        <p className="mx-auto mt-4 max-w-md text-body-md text-muted-foreground">
+          The page you&apos;re looking for may have moved, or the product is no
+          longer available.
+        </p>
+        <div className="mt-9 flex flex-wrap justify-center gap-4">
+          <Button href="/products" variant="primary" size="lg">
+            Browse the Collection
+          </Button>
+          <Button href="/" variant="outline" size="lg">
             Go Home
-          </Link>
+          </Button>
         </div>
       </div>
-    </>
+    </StoreLayout>
   );
 }
