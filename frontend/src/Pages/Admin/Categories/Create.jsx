@@ -1,9 +1,8 @@
-import { Head, router, usePage } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import { useState } from "react";
 import AdminLayout from "../../../Layouts/AdminLayout";
 
 export default function AdminCategoriesCreate() {
-  const { flash } = usePage().props;
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -26,10 +25,6 @@ export default function AdminCategoriesCreate() {
   return (
     <AdminLayout title="Create Category">
       <Head title="Create Category" />
-
-      {flash?.error && (
-        <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-700">{flash.error}</div>
-      )}
 
       <form onSubmit={handleSubmit} className="max-w-2xl">
         <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">

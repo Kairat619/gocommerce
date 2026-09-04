@@ -13,6 +13,14 @@ find it here. Before renaming anything, remember that the name is defined by a
 Go serializer in `internal/handler/` — renaming a prop is a **backend change**
 and requires explicit authorization.
 
+Every shape below also exists as a JSDoc typedef in
+`frontend/src/types/` — `commerce.js` (object shapes), `shared.js` (props on
+every page) and `pages.js` (one typedef per page). Those are the
+machine-readable half of this document: annotate a page with
+`@param {import('../../types/pages').ProductsShowProps}` and an editor will
+catch a mistyped prop that this project has no TypeScript or test runner to
+catch. **When a shape changes here, change it there too.**
+
 Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`DO_NOT_BREAK.md`](DO_NOT_BREAK.md)
 
 ---

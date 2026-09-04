@@ -9,13 +9,19 @@ import ProductCard from "../../Components/ProductCard";
 import { formatMoney } from "../../lib/money";
 import { comparePrice, discountPercent, isInStock } from "../../lib/product";
 import { pageTitle } from "../../lib/brand";
+import { asList } from "../../lib/props";
 
+/** @param {import('../../types/pages').ProductsShowProps} props */
 export default function ProductsShow({
   product,
   images,
   variants,
   related_products,
 }) {
+  const productImages = asList(images);
+  const productVariants = asList(variants);
+  const related = asList(related_products);
+
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [activeImage, setActiveImage] = useState(product.image_url || null);
@@ -27,7 +33,7 @@ export default function ProductsShow({
 
   const gallery = [];
   if (product.image_url) gallery.push({ id: "main", url: product.image_url });
-  (images || []).forEach((img) => gallery.push(img));
+  productImages.forEach((img) => gallery.push(img));
 
   function addToCart() {
     router.post(
@@ -135,13 +141,13 @@ export default function ProductsShow({
             />
           )}
 
-          {variants && variants.length > 0 && (
+          {productVariants.length > 0 && (
             <div className="mt-8">
               <label className="mb-3 block text-label-lg font-semibold uppercase tracking-[0.1em] text-ink">
                 Variant
               </label>
               <div className="flex flex-wrap gap-2">
-                {variants.map((variant) => (
+                {productVariants.map((variant) => (
                   <button
                     key={variant.id}
                     onClick={() => setSelectedVariant(variant)}
@@ -253,11 +259,11 @@ export default function ProductsShow({
         </div>
       </div>
 
-      {related_products && related_products.length > 0 && (
+      {related.length > 0 && (
         <div className="mt-20 border-t border-ink/10 pt-16">
           <h2 className="mb-10 text-display-md text-ink">You May Also Like</h2>
           <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:gap-x-6 lg:grid-cols-4">
-            {related_products.map((rp, i) => (
+            {related.map((rp, i) => (
               <ProductCard key={rp.id} product={rp} index={i} />
             ))}
           </div>

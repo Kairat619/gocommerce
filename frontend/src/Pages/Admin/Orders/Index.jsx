@@ -1,18 +1,12 @@
 import { Head, Link } from "@inertiajs/react";
 import AdminLayout from "../../../Layouts/AdminLayout";
+import OrderStatus from "../../../Components/Commerce/OrderStatus";
+import { shortOrderId } from "../../../lib/order";
 import Pagination from "../../../Components/Pagination";
-
-const statusColors = {
-  pending: "bg-yellow-100 text-yellow-800",
-  confirmed: "bg-blue-100 text-blue-800",
-  processing: "bg-indigo-100 text-indigo-800",
-  shipped: "bg-purple-100 text-purple-800",
-  delivered: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
-};
 
 const statuses = ["", "pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
 
+/** @param {import('../../../types/pages').AdminOrdersIndexProps} props */
 export default function AdminOrdersIndex({ orders, status, pagination }) {
   return (
     <AdminLayout title="Orders">
@@ -48,7 +42,7 @@ export default function AdminOrdersIndex({ orders, status, pagination }) {
           <tbody className="divide-y divide-gray-200">
             {orders.map((order) => (
               <tr key={order.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-mono text-xs text-gray-500">{order.id.slice(0, 8)}...</td>
+                <td className="px-6 py-4 font-mono text-xs text-gray-500">{shortOrderId(order.id)}</td>
                 <td className="px-6 py-4">
                   <p className="text-sm font-medium text-gray-900">{order.customer_name}</p>
                   <p className="text-xs text-gray-500">{order.customer_email}</p>
@@ -56,9 +50,7 @@ export default function AdminOrdersIndex({ orders, status, pagination }) {
                 <td className="px-6 py-4 text-sm text-gray-500">{order.created_at}</td>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">${order.total}</td>
                 <td className="px-6 py-4">
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusColors[order.status] || "bg-gray-100 text-gray-800"}`}>
-                    {order.status}
-                  </span>
+                  <OrderStatus status={order.status} size="sm" />
                 </td>
                 <td className="px-6 py-4 text-right text-sm">
                   <Link href={`/admin/orders/${order.id}`} className="font-medium text-indigo-600 hover:text-indigo-500">

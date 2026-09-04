@@ -1,8 +1,10 @@
-import { Head, Link, router, usePage } from "@inertiajs/react";
+import { Head, Link, router } from "@inertiajs/react";
 import { useState } from "react";
 import StoreLayout from "../../Components/StoreLayout";
 import { formatMoney, formatLineTotal } from "../../lib/money";
+import { asCart, asList } from "../../lib/props";
 
+/** @param {import('../../types/pages').CheckoutIndexProps} props */
 export default function CheckoutIndex({
   cart,
   addresses,
@@ -10,9 +12,8 @@ export default function CheckoutIndex({
   shipping_cost,
   free_shipping_threshold,
 }) {
-  const { flash } = usePage().props;
-  const items = cart?.items || [];
-  const subtotal = cart?.total_price || 0;
+  const { items, total_price: subtotal } = asCart(cart);
+  const savedAddresses = asList(addresses);
   const tax = subtotal * tax_rate;
   const shipping = subtotal >= free_shipping_threshold ? 0 : shipping_cost;
   const total = subtotal + tax + shipping;
@@ -97,22 +98,16 @@ export default function CheckoutIndex({
 
       <h1 className="mb-8 text-2xl font-bold text-gray-900">Checkout</h1>
 
-      {flash?.error && (
-        <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-700">
-          {flash.error}
-        </div>
-      )}
-
       <form onSubmit={handleSubmit}>
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-8">
-            {addresses && addresses.length > 0 && (
+            {savedAddresses.length > 0 && (
               <div className="rounded-xl border border-gray-200 bg-white p-6">
                 <h2 className="mb-4 text-lg font-semibold text-gray-900">
                   Saved Addresses
                 </h2>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {addresses.map((addr) => (
+                  {savedAddresses.map((addr) => (
                     <button
                       key={addr.id}
                       type="button"

@@ -2,8 +2,12 @@ import { Head, Link } from "@inertiajs/react";
 import StoreLayout from "../../Components/StoreLayout";
 import { decorativeImage } from "../../lib/image";
 import { pageTitle } from "../../lib/brand";
+import { asList } from "../../lib/props";
 
+/** @param {import('../../types/pages').CategoriesIndexProps} props */
 export default function CategoriesIndex({ categories }) {
+  const items = asList(categories);
+
   return (
     <StoreLayout>
       <Head title={pageTitle("Collections")} />
@@ -20,7 +24,7 @@ export default function CategoriesIndex({ categories }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
-        {categories.map((cat) => (
+        {items.map((cat) => (
           <Link
             key={cat.slug}
             href={`/categories/${cat.slug}`}

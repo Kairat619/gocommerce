@@ -2,8 +2,9 @@ import { Head, router, usePage } from "@inertiajs/react";
 import { useState } from "react";
 import AdminLayout from "../../../Layouts/AdminLayout";
 
+/** @param {import('../../../types/pages').AdminSettingsProps} props */
 export default function AdminSettingsIndex({ settings }) {
-  const { flash, errors } = usePage().props;
+  const { errors } = usePage().props;
   const [form, setForm] = useState({
     tax_rate_percent: settings.tax_rate_percent ?? 0,
     shipping_cost: settings.shipping_cost ?? 0,
@@ -27,13 +28,6 @@ export default function AdminSettingsIndex({ settings }) {
   return (
     <AdminLayout title="Settings">
       <Head title="Store Settings" />
-
-      {flash?.success && (
-        <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-700">{flash.success}</div>
-      )}
-      {flash?.error && (
-        <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-700">{flash.error}</div>
-      )}
 
       <form onSubmit={handleSubmit} className="max-w-2xl">
         <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">

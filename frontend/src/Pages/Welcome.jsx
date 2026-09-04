@@ -6,6 +6,7 @@ import Button from "../Components/UI/Button";
 import Container from "../Components/UI/Container";
 import { decorativeImage } from "../lib/image";
 import { BRAND_NAME } from "../lib/brand";
+import { asList } from "../lib/props";
 
 const valueProps = [
   {
@@ -22,9 +23,10 @@ const valueProps = [
   },
 ];
 
-export default function Welcome({ featured_products = [], categories = [] }) {
-  const featured = featured_products.slice(0, 8);
-  const cats = categories.slice(0, 4);
+/** @param {import('../types/pages').WelcomeProps} props */
+export default function Welcome({ featured_products, categories }) {
+  const featured = asList(featured_products).slice(0, 8);
+  const cats = asList(categories).slice(0, 4);
 
   return (
     <StoreLayout full>

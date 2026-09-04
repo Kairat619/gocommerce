@@ -6,7 +6,9 @@ import Button from "../../Components/UI/Button";
 import Container from "../../Components/UI/Container";
 import Input from "../../Components/UI/Input";
 import { pageTitle } from "../../lib/brand";
+import { asList, asPagination } from "../../lib/props";
 
+/** @param {import('../../types/pages').ProductsIndexProps} props */
 export default function ProductsIndex({
   products,
   categories,
@@ -16,6 +18,10 @@ export default function ProductsIndex({
   min_price,
   max_price,
 }) {
+  const items = asList(products);
+  const categoryList = asList(categories);
+  const pages = asPagination(pagination);
+
   const { data, setData } = useForm({
     q: search || "",
     category: category || "",
@@ -58,7 +64,7 @@ export default function ProductsIndex({
 
   const hasActiveFilters = category || min_price || max_price || search;
 
-  const activeCategory = categories?.find((c) => c.slug === category);
+  const activeCategory = categoryList.find((c) => c.slug === category);
   const heading = search
     ? `Results for "${search}"`
     : activeCategory
@@ -77,10 +83,10 @@ export default function ProductsIndex({
           </span>
           <h1 className="text-display-lg text-ink">{heading}</h1>
           <p className="mt-3 text-body-md text-muted-foreground">
-            {pagination.total > 1
-              ? `Page ${pagination.current} of ${pagination.total}`
-              : `${products.length} product${
-                  products.length !== 1 ? "s" : ""
+            {pages.total > 1
+              ? `Page ${pages.current} of ${pages.total}`
+              : `${items.length} product${
+                  items.length !== 1 ? "s" : ""
                 } available`}
           </p>
         </Container>
@@ -119,7 +125,7 @@ export default function ProductsIndex({
                 >
                   All Categories
                 </button>
-                {categories?.map((cat) => (
+                {categoryList.map((cat) => (
                   <button
                     key={cat.slug}
                     type="button"
@@ -188,7 +194,7 @@ export default function ProductsIndex({
 
         {/* Grid */}
         <div className="flex-1">
-          {products.length === 0 ? (
+          {items.length === 0 ? (
             <div className="border border-dashed border-ink/15 py-24 text-center">
               <p className="text-headline-md font-serif text-ink">
                 No products found
@@ -205,14 +211,14 @@ export default function ProductsIndex({
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:gap-x-6 xl:grid-cols-3">
-              {products.map((product, i) => (
+              {items.map((product, i) => (
                 <ProductCard key={product.id} product={product} index={i} />
               ))}
             </div>
           )}
 
           <Pagination
-            pagination={pagination}
+            pagination={pages}
             searchParams={
               hasActiveFilters
                 ? {

@@ -130,6 +130,17 @@ Page props are named by the Go handler. A React page consuming `products` and
 - Prop names are `snake_case` (they mirror the Go serializers).
 - Adding a prop is a **backend change** — see §3.
 - Check [`API_CONTRACT.md`](API_CONTRACT.md) before editing any page component.
+- Annotate every page with its typedef from `frontend/src/types/`:
+  `/** @param {import('../../types/pages').ProductsShowProps} props */`.
+  Keep the typedefs and `API_CONTRACT.md` in step.
+
+### Normalize props once, at the top of the page
+
+A few props are not as well-behaved as they look: `related_products` and
+`addresses` arrive as `null` rather than `[]`, and `cart` is `{}` on a fresh
+session. Run them through `lib/props.js` (`asList`, `asCart`, `asPagination`)
+where the page destructures, so presentation code never re-asks "might this be
+null?". These guards normalize **shape only** — never field names.
 
 ### Data-shape gotchas that will bite you
 

@@ -1,19 +1,12 @@
-import { Head, Link, router, usePage } from "@inertiajs/react";
+import { Head, Link, router } from "@inertiajs/react";
 import AdminLayout from "../../../Layouts/AdminLayout";
-
-const statusColors = {
-  pending: "bg-yellow-100 text-yellow-800",
-  confirmed: "bg-blue-100 text-blue-800",
-  processing: "bg-indigo-100 text-indigo-800",
-  shipped: "bg-purple-100 text-purple-800",
-  delivered: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
-};
+import OrderStatus from "../../../Components/Commerce/OrderStatus";
+import { shortOrderId } from "../../../lib/order";
 
 const statuses = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
 
+/** @param {import('../../../types/pages').AdminOrderShowProps} props */
 export default function AdminOrdersShow({ order, items }) {
-  const { flash } = usePage().props;
 
   function updateStatus(status) {
     router.post(`/admin/orders/${order.id}/status`, { status });
@@ -21,20 +14,13 @@ export default function AdminOrdersShow({ order, items }) {
 
   return (
     <AdminLayout title="Order Details">
-      <Head title={`Order #${order.id.slice(0, 8)}...`} />
+      <Head title={`Order #${shortOrderId(order.id)}`} />
 
       <div className="mb-6">
         <Link href="/admin/orders" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
           ← Back to Orders
         </Link>
       </div>
-
-      {flash?.success && (
-        <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-700">{flash.success}</div>
-      )}
-      {flash?.error && (
-        <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-700">{flash.error}</div>
-      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
@@ -80,9 +66,7 @@ export default function AdminOrdersShow({ order, items }) {
           <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
             <h3 className="mb-4 text-lg font-semibold text-gray-900">Status</h3>
             <div className="mb-4">
-              <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium capitalize ${statusColors[order.status] || "bg-gray-100 text-gray-800"}`}>
-                {order.status}
-              </span>
+              <OrderStatus status={order.status} size="lg" />
             </div>
             <div className="space-y-2">
               {statuses.map((s) => (

@@ -1,11 +1,11 @@
-import { Head, Link, router, usePage } from "@inertiajs/react";
+import { Head, Link, router } from "@inertiajs/react";
 import StoreLayout from "../../Components/StoreLayout";
 import { formatMoney, formatLineTotal } from "../../lib/money";
+import { asCart } from "../../lib/props";
 
+/** @param {import('../../types/pages').CartIndexProps} props */
 export default function CartIndex({ cart }) {
-  const { flash } = usePage().props;
-  const items = cart?.items || [];
-  const totalPrice = cart?.total_price || 0;
+  const { items, total_price: totalPrice } = asCart(cart);
 
   function updateQuantity(productId, quantity) {
     router.post(
@@ -37,17 +37,6 @@ export default function CartIndex({ cart }) {
         <h1 className="mb-8 text-2xl font-bold text-gray-900">
           Shopping Cart
         </h1>
-
-        {flash?.success && (
-          <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-700">
-            {flash.success}
-          </div>
-        )}
-        {flash?.error && (
-          <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-700">
-            {flash.error}
-          </div>
-        )}
 
         {items.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white py-16 text-center">

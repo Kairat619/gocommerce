@@ -1,20 +1,15 @@
 import { Head, Link } from "@inertiajs/react";
 import StoreLayout from "../../Components/StoreLayout";
+import OrderStatus from "../../Components/Commerce/OrderStatus";
 import { formatMoney } from "../../lib/money";
+import { shortOrderId } from "../../lib/order";
+import { asList } from "../../lib/props";
 
-const statusColors = {
-  pending: "bg-yellow-100 text-yellow-800",
-  confirmed: "bg-blue-100 text-blue-800",
-  processing: "bg-indigo-100 text-indigo-800",
-  shipped: "bg-purple-100 text-purple-800",
-  delivered: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
-};
-
+/** @param {import('../../types/pages').AccountOrderShowProps} props */
 export default function AccountOrderShow({ order, items }) {
   return (
     <StoreLayout>
-      <Head title={`Order #${order.id.slice(0, 8)}...`} />
+      <Head title={`Order #${shortOrderId(order.id)}`} />
 
       <div className="mx-auto max-w-4xl">
         <div className="mb-8 flex items-center justify-between">
@@ -34,13 +29,7 @@ export default function AccountOrderShow({ order, items }) {
                 <h2 className="text-lg font-semibold text-gray-900">
                   Order Info
                 </h2>
-                <span
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium capitalize ${
-                    statusColors[order.status] || "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {order.status}
-                </span>
+                <OrderStatus status={order.status} size="lg" />
               </div>
               <dl className="grid grid-cols-2 gap-4 text-sm">
                 <div>

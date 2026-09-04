@@ -1,15 +1,8 @@
 import { Head, Link } from "@inertiajs/react";
 import AdminLayout from "../../Layouts/AdminLayout";
+import OrderStatus from "../../Components/Commerce/OrderStatus";
 
-const statusColors = {
-  pending: "bg-yellow-100 text-yellow-800",
-  confirmed: "bg-blue-100 text-blue-800",
-  processing: "bg-indigo-100 text-indigo-800",
-  shipped: "bg-purple-100 text-purple-800",
-  delivered: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
-};
-
+/** @param {import('../../types/pages').AdminDashboardProps} props */
 export default function Dashboard({
   summary,
   product_count,
@@ -93,9 +86,7 @@ export default function Dashboard({
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900">${order.total}</p>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusColors[order.status] || "bg-gray-100 text-gray-800"}`}>
-                        {order.status}
-                      </span>
+                      <OrderStatus status={order.status} size="sm" />
                     </div>
                   </Link>
                 </li>

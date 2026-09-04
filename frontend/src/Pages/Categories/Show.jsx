@@ -7,8 +7,13 @@ import Container from "../../Components/UI/Container";
 import Breadcrumbs from "../../Components/Breadcrumbs";
 import { decorativeImage } from "../../lib/image";
 import { pageTitle } from "../../lib/brand";
+import { asList, asPagination } from "../../lib/props";
 
+/** @param {import('../../types/pages').CategoriesShowProps} props */
 export default function CategoriesShow({ category, products, pagination }) {
+  const items = asList(products);
+  const pages = asPagination(pagination);
+
   return (
     <StoreLayout full>
       <Head title={pageTitle(category.name)} />
@@ -41,7 +46,7 @@ export default function CategoriesShow({ category, products, pagination }) {
       </section>
 
       <Container className="py-14 md:py-20">
-        {products.length === 0 ? (
+        {items.length === 0 ? (
           <div className="border border-dashed border-ink/15 py-24 text-center">
             <p className="font-serif text-headline-md text-ink">
               No products in this collection yet
@@ -58,11 +63,11 @@ export default function CategoriesShow({ category, products, pagination }) {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:gap-x-6 lg:grid-cols-3 xl:grid-cols-4">
-              {products.map((product, i) => (
+              {items.map((product, i) => (
                 <ProductCard key={product.id} product={product} index={i} />
               ))}
             </div>
-            <Pagination pagination={pagination} />
+            <Pagination pagination={pages} />
           </>
         )}
       </Container>

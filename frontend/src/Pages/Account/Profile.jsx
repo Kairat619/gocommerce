@@ -1,9 +1,11 @@
-import { Head, Link, router, usePage } from "@inertiajs/react";
+import { Head, Link, router } from "@inertiajs/react";
 import { useState } from "react";
 import StoreLayout from "../../Components/StoreLayout";
+import { asList } from "../../lib/props";
 
+/** @param {import('../../types/pages').AccountProfileProps} props */
 export default function AccountProfile({ user, addresses }) {
-  const { flash } = usePage().props;
+  const savedAddresses = asList(addresses);
   const [name, setName] = useState(user.name || "");
   const [email, setEmail] = useState(user.email || "");
   const [processing, setProcessing] = useState(false);
@@ -24,17 +26,6 @@ export default function AccountProfile({ user, addresses }) {
 
       <div className="mx-auto max-w-4xl">
         <h1 className="mb-8 text-2xl font-bold text-gray-900">My Account</h1>
-
-        {flash?.success && (
-          <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-700">
-            {flash.success}
-          </div>
-        )}
-        {flash?.error && (
-          <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-700">
-            {flash.error}
-          </div>
-        )}
 
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-8">
@@ -81,9 +72,9 @@ export default function AccountProfile({ user, addresses }) {
               <h2 className="mb-4 text-lg font-semibold text-gray-900">
                 Addresses
               </h2>
-              {addresses && addresses.length > 0 ? (
+              {savedAddresses.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {addresses.map((addr) => (
+                  {savedAddresses.map((addr) => (
                     <div
                       key={addr.id}
                       className="rounded-lg border border-gray-200 p-4"
