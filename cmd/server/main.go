@@ -128,6 +128,7 @@ func main() {
 	adminCouponHandler := handler.NewAdminCouponHandler(renderer, queries)
 	adminCollectionHandler := handler.NewAdminCollectionHandler(renderer, queries, pool)
 	adminAttributeHandler := handler.NewAdminAttributeHandler(renderer, queries, pool)
+	adminOrderHandler := handler.NewAdminOrderHandler(renderer, queries, pool)
 
 	// --- Media Storage (Cloudflare R2 when configured, local disk otherwise) ---
 	var mediaStore storage.Storage = storage.NewLocal()
@@ -263,9 +264,10 @@ func main() {
 		r.Post("/admin/categories/{id}/delete", adminHandler.DeleteCategory())
 
 		// Orders
-		r.Get("/admin/orders", adminHandler.ListOrders())
-		r.Get("/admin/orders/{id}", adminHandler.ShowOrder())
-		r.Post("/admin/orders/{id}/status", adminHandler.UpdateOrderStatus())
+		r.Get("/admin/orders", adminOrderHandler.List())
+		r.Get("/admin/orders/{id}", adminOrderHandler.Show())
+		r.Post("/admin/orders/{id}/status", adminOrderHandler.UpdateStatus())
+		r.Post("/admin/orders/{id}/notes", adminOrderHandler.AddNote())
 
 		// Customers
 		r.Get("/admin/customers", adminHandler.ListCustomers())

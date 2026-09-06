@@ -1433,6 +1433,23 @@ func (q *Queries) ListProductsByPriceRange(ctx context.Context, arg ListProducts
 	return items, nil
 }
 
+const restoreProductStock = `-- name: RestoreProductStock :exec
+UPDATE products SET stock_quantity = stock_quantity + $2 WHERE id = $1
+`
+
+type RestoreProductStockParams struct {
+	ID            pgtype.UUID `db:"id" json:"id"`
+	StockQuantity int32       `db:"stock_quantity" json:"stock_quantity"`
+}
+
+// Returns quantity to a product when an order is cancelled. Additive rather
+// than a computed SET, so two concurrent cancellations cannot lose one another's
+// restock.
+func (q *Queries) RestoreProductStock(ctx context.Context, arg RestoreProductStockParams) error {
+	_, err := q.db.Exec(ctx, restoreProductStock, arg.ID, arg.StockQuantity)
+	return err
+}
+
 const searchProducts = `-- name: SearchProducts :many
 SELECT p.id, p.category_id, p.name, p.slug, p.description, p.price, p.compare_at_price, p.sku, p.barcode, p.image_url, p.is_active, p.is_featured, p.stock_quantity, p.weight, p.meta_title, p.meta_description, p.created_at, p.updated_at, p.short_description, p.brand, p.tags, p.cost_price, p.track_inventory, p.allow_backorders, p.low_stock_threshold, p.length, p.width, p.height, p.meta_keywords, p.sort_order, c.name AS category_name, c.slug AS category_slug
 FROM products p

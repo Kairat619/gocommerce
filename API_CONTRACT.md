@@ -708,14 +708,85 @@ rather than blocking the delete.
 
 ### Orders
 
+Orders are financial records. Every figure the admin shows is the figure the
+order recorded at checkout — nothing on these screens recalculates a total, a
+discount or a tax.
+
+The lifecycle is a single `order_status` enum: `pending` → `confirmed` →
+`processing` → `shipped` → `delivered`, with `cancelled` as an exit before
+shipping. There is **no separate payment or fulfillment status** — this
+application records no payments, shipments or refunds.
+
 | Route | Page | Props |
 |---|---|---|
-| `GET /admin/orders` | `Admin/Orders/Index` | `orders[]` = `{id, customer_name, customer_email, total, status, created_at}`, `status` (echo of `?status=`), `pagination` |
-| `GET /admin/orders/{id}` | `Admin/Orders/Show` | `order`, `items[]` = `{product_name, quantity, unit_price, total}` |
+| `GET /admin/orders` | `Admin/Orders/Index` | `orders[]`, `filters`, `status_counts`, `page_sizes`, `filters_active`, `pagination`, `currency` |
+| `GET /admin/orders/{id}` | `Admin/Orders/Show` | `order`, `items[]`, `activity[]`, `customer`, `next_statuses`, `currency` |
 
-`POST /admin/orders/{id}/status` field: `status`.
+The list is **entirely server-driven** — search, status, date range, sort and
+page size are query parameters, so a filtered view is shareable and the browser
+never holds more than one page:
 
-Note the admin order-items shape has **no `id`**, unlike the account one.
+`?q=` (customer name/email, shipping name, coupon code, or an order-id prefix)
+· `?status=` · `?range=today|yesterday|7d|30d` ·
+`?sort=newest|oldest|total_desc|total_asc|customer` · `?limit=20|50|100` ·
+`?page=`
+
+Unknown values are dropped rather than passed through, `limit` is restricted to
+the offered sizes, and a page past the end walks back to the last page.
+`status_counts` is one grouped query feeding the tab counts.
+
+`order` on the detail page carries everything the order recorded — including the
+coupon code, discount, full billing address and the customer's checkout note,
+all of which the previous page received and rendered nowhere.
+
+`items[]` mixes two sources, deliberately: `product_name`, `variant_name`,
+`quantity`, `unit_price` and `total` are **historical**, from `order_items`, and
+never follow a later rename or repricing. `product_sku`, `product_slug` and
+`product_image_url` are joined from `products` for presentation only, are the
+catalogue's current values, and the card says so.
+
+`next_statuses` is computed from the server's own state machine, so the UI only
+ever offers moves that will be accepted.
+
+`POST /admin/orders/{id}/status` takes `status` and is validated against
+`allowedTransitions`: forward along the track, or cancel before shipping.
+`delivered` and `cancelled` are terminal — a cancelled order cannot be revived,
+and an order cannot skip steps. **Cancelling returns every item's quantity to
+stock**, in the same transaction as the status change and the activity entries;
+the restore is additive (`stock_quantity + n`) so concurrent cancellations
+cannot lose one another. Stock is deducted once, at checkout, so cancellation is
+the only point at which it comes back.
+
+`POST /admin/orders/{id}/notes` takes `note` (≤ 2000 chars) and appends an
+internal staff note to the activity log. This is **not** `orders.notes`, which
+is the customer's own checkout note and is never written by the admin.
+
+### Order activity
+
+`order_activity` (migration 008) is the audit trail, and serves both the
+timeline and admin notes — a note is an event, and belongs in the same
+chronology as the status changes around it.
+
+`activity[]` is `{id, kind, message, actor_name, from_status, to_status,
+created_at}` oldest-first, where `kind` is `created` | `status_changed` | `note`
+| `stock_restored`. `actor_name` is denormalised at write time so history stays
+readable after a staff account is renamed or deleted; empty means the system or
+the customer rather than staff.
+
+Checkout writes the `created` entry fire-and-forget, matching how coupon
+redemption is already recorded there: a placed order is a financial fact, and
+failing to write its history entry must never unwind it.
+
+Migration 008 backfills one `created` event per pre-existing order from
+`orders.created_at`, which is a real recorded timestamp. Status changes are
+deliberately **not** backfilled — those timestamps were never recorded, and
+inventing them would put fiction into an audit trail.
+
+Not modelled, and so not offered anywhere in the UI: payment status,
+transactions, refunds, shipments, carriers, tracking, invoices and order
+editing. There is no payment gateway, no shipment table and no refund table, so
+every such control would be decoration. The totals card states plainly that
+settlement lives in the payment provider.
 
 ### Customers
 

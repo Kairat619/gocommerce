@@ -23,6 +23,25 @@ Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`API_CONTRACT.md`](API_CON
   placeholder when it has none (`lib/image.categoryImage`)
 - Category descriptions render as HTML on `/categories/{slug}`; the tiles on
   `/categories` show a plain-text excerpt of the same value
+- Order management — `/admin/orders` with server-side search, status/date
+  filters, sorting and page size; `/admin/orders/{id}` detail
+- **Order status follows the lifecycle**: forward along
+  pending → confirmed → processing → shipped → delivered, or cancel before
+  shipping. `delivered` and `cancelled` are terminal — a cancelled order can
+  never be revived, and steps cannot be skipped
+- **Cancelling an order returns its items to stock**, in the same transaction as
+  the status change. Stock is deducted once at checkout, so this is the only
+  place it comes back; the restore is additive so concurrent cancels are safe
+- Every status change and staff note is recorded in `order_activity` with the
+  actor's name captured at write time
+- Admin notes never touch `orders.notes` — that is the customer's own checkout
+  note and stays customer-facing
+- Order item names and unit prices always come from `order_items`, never from
+  the current product: renaming or repricing a product must not rewrite history
+- Order totals, discounts, coupon codes and addresses are displayed exactly as
+  recorded and are never recalculated by the admin
+- Checkout still writes an `order_activity` "created" row, fire-and-forget — a
+  failure there must never fail or unwind a placed order
 - Attribute management — `/admin/attributes`, create and edit
 - **Renaming an attribute value never disturbs the products using it.** Values
   are diffed by id, so a rename is an in-place `UPDATE`; the products follow it.

@@ -195,6 +195,17 @@ func (s *OrderService) CreateOrder(ctx context.Context, sess *session.Session, i
 		return nil, fmt.Errorf("failed to create order: %w", err)
 	}
 
+	// The order's first entry in its audit trail. Deliberately fire-and-forget,
+	// exactly like RecordRedemption below: a placed order is a financial fact,
+	// and failing to write its history entry must never unwind it or fail the
+	// customer's checkout. The actor is left NULL because this is the customer
+	// checking out, not a member of staff acting on the order.
+	_, _ = s.queries.CreateOrderActivity(ctx, db.CreateOrderActivityParams{
+		OrderID: order.ID,
+		Kind:    "created",
+		Message: "Order placed at checkout.",
+	})
+
 	for _, item := range cart.Items {
 		productID, err := parseUUID(item.ProductID)
 		if err != nil {

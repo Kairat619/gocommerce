@@ -41,3 +41,20 @@ WHERE o.status != 'cancelled'
 GROUP BY p.id, p.name, p.slug, p.price, p.image_url
 ORDER BY total_sold DESC
 LIMIT $1;
+
+-- name: ListOrderItemsForAdmin :many
+-- The admin order detail line items.
+--
+-- product_name and unit_price come from order_items, never from products: they
+-- are the historical record of what was sold and at what price, and must not
+-- follow a later rename or repricing. The join to products is only for
+-- presentation extras the order never captured — the thumbnail and the current
+-- SKU — and is LEFT so a line survives even if sqlc's RESTRICT is ever relaxed.
+SELECT oi.*,
+       p.slug AS product_slug,
+       p.sku AS product_sku,
+       p.image_url AS product_image_url
+FROM order_items oi
+LEFT JOIN products p ON p.id = oi.product_id
+WHERE oi.order_id = $1
+ORDER BY oi.created_at ASC, oi.id ASC;
