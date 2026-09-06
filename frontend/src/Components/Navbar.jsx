@@ -7,7 +7,8 @@ import { BRAND_NAME } from "../lib/brand";
 const navLinks = [
   { label: "New Arrivals", href: "/products" },
   { label: "Shop", href: "/products" },
-  { label: "Collections", href: "/categories" },
+  { label: "Collections", href: "/collections" },
+  { label: "Shop by Category", href: "/categories" },
 ];
 
 export default function Navbar() {

@@ -120,11 +120,13 @@ func main() {
 	authHandler := handler.NewAuthHandler(renderer, authService)
 	productHandler := handler.NewProductHandler(renderer, queries)
 	categoryHandler := handler.NewCategoryHandler(renderer, queries)
+	collectionHandler := handler.NewCollectionHandler(renderer, queries)
 	cartHandler := handler.NewCartHandler(renderer, cartService, queries, couponService)
 	checkoutHandler := handler.NewCheckoutHandler(renderer, orderService, settingsService, couponService)
 	accountHandler := handler.NewAccountHandler(renderer, orderService, authService)
 	adminHandler := handler.NewAdminHandler(renderer, queries, pool, settingsService)
 	adminCouponHandler := handler.NewAdminCouponHandler(renderer, queries)
+	adminCollectionHandler := handler.NewAdminCollectionHandler(renderer, queries, pool)
 
 	// --- Media Storage (Cloudflare R2 when configured, local disk otherwise) ---
 	var mediaStore storage.Storage = storage.NewLocal()
@@ -186,6 +188,11 @@ func main() {
 	// Categories
 	r.Get("/categories", categoryHandler.Index())
 	r.Get("/categories/{slug}", categoryHandler.Show())
+
+	// Collections. A separate namespace from /categories, so no existing
+	// category URL changes meaning.
+	r.Get("/collections", collectionHandler.Index())
+	r.Get("/collections/{slug}", collectionHandler.Show())
 
 	// Cart
 	r.Get("/cart", cartHandler.Show())
@@ -250,6 +257,14 @@ func main() {
 		// Customers
 		r.Get("/admin/customers", adminHandler.ListCustomers())
 		r.Get("/admin/customers/{id}", adminHandler.ShowCustomer())
+
+		// Collections
+		r.Get("/admin/collections", adminCollectionHandler.List())
+		r.Get("/admin/collections/create", adminCollectionHandler.Create())
+		r.Post("/admin/collections", adminCollectionHandler.Store())
+		r.Get("/admin/collections/{id}/edit", adminCollectionHandler.Edit())
+		r.Post("/admin/collections/{id}", adminCollectionHandler.Update())
+		r.Post("/admin/collections/{id}/delete", adminCollectionHandler.Delete())
 
 		// Coupons
 		r.Get("/admin/coupons", adminCouponHandler.List())

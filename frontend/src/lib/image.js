@@ -52,3 +52,12 @@ export function decorativeImage(seed, width, height) {
 export function categoryImage(category, width, height) {
   return category?.image_url || decorativeImage(`category-${category?.slug}`, width, height);
 }
+
+/**
+ * A collection's own artwork, falling back to the same seeded placeholder as
+ * categories. `collections.image_url` is set by the admin collection form, so
+ * the fallback is only reached for a collection the merchant left without one.
+ */
+export function collectionImage(collection, width, height) {
+  return collection?.image_url || decorativeImage(`collection-${collection?.slug}`, width, height);
+}

@@ -112,6 +112,29 @@ type Category struct {
 	MetaKeywords    pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
 }
 
+type Collection struct {
+	ID              pgtype.UUID        `db:"id" json:"id"`
+	Name            string             `db:"name" json:"name"`
+	Slug            string             `db:"slug" json:"slug"`
+	Description     pgtype.Text        `db:"description" json:"description"`
+	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
+	IsActive        bool               `db:"is_active" json:"is_active"`
+	IsFeatured      bool               `db:"is_featured" json:"is_featured"`
+	SortOrder       int32              `db:"sort_order" json:"sort_order"`
+	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
+	MetaKeywords    pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type CollectionProduct struct {
+	CollectionID pgtype.UUID        `db:"collection_id" json:"collection_id"`
+	ProductID    pgtype.UUID        `db:"product_id" json:"product_id"`
+	Position     int32              `db:"position" json:"position"`
+	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type Coupon struct {
 	ID                 pgtype.UUID        `db:"id" json:"id"`
 	Code               string             `db:"code" json:"code"`
