@@ -571,6 +571,73 @@ category still has products (`products.category_id` is `ON DELETE RESTRICT`);
 subcategories survive as top-level categories (`parent_id` is `ON DELETE SET
 NULL`) and the success flash says so.
 
+### Attributes
+
+An attribute is a property products share (`attributes` + `attribute_options` +
+`product_attributes`). `is_variant` is the flag the product form's variant
+builder reads — it offers an attribute's values for combination only when
+`is_variant && options.length > 0`.
+
+These Inertia pages are **separate from the two JSON endpoints** below, which
+still back the product form's inline creator and are unchanged.
+
+| Route | Page | Props |
+|---|---|---|
+| `GET /admin/attributes` | `Admin/Attributes/Index` | `attributes[]` = `{id, code, name, type, is_required, is_variant, sort_order, option_count, product_count}` |
+| `GET /admin/attributes/create` | `Admin/Attributes/Create` | — |
+| `GET /admin/attributes/{id}/edit` | `Admin/Attributes/Edit` | `attribute`, `options[]` |
+
+`attribute` on the edit page adds `product_count` (distinct products carrying
+it). `options[]` is `{id, value, sort_order, product_count}` in stored order,
+where `product_count` is how many products reference that specific value.
+
+`POST /admin/attributes/create` and `POST /admin/attributes/{id}/edit` take a
+**JSON body**:
+
+```jsonc
+{ "name": "…", "code": "…", "type": "select|multiselect|text|textarea|number|boolean",
+  "is_required": false, "is_variant": true, "sort_order": "0",
+  "options": [ { "id": "…hex…|\"\"", "value": "…" } ],
+  "redirect_to": "index|edit" }
+```
+
+**Values are diffed by id, never replaced wholesale.** A row posted with an `id`
+is renamed in place; a row with an empty `id` is inserted; only ids absent from
+the payload are deleted. This is not a style choice —
+`product_attributes.option_id` is `ON DELETE SET NULL`, so clearing and
+re-inserting the list (the approach collection membership uses safely) would
+blank the stored value on every product carrying the attribute. Array order is
+the stored `sort_order`.
+
+Codes are normalised with `categorySlugify`, not `slugify`: the latter only
+rewrites spaces and underscores and would pass `???` through as a code. The
+client-side slugifier in `productFormState.js` matches `categorySlugify`, so the
+code previewed in the form is the code stored.
+
+`is_variant` is forced to `false` for any type without a fixed value list — the
+server does this, not just the form, since options survive a type change.
+
+`type` may only change while `product_count` is 0. A stored `product_attributes`
+row is shaped by the type it was written under (an `option_id` for the list
+types, a free-typed `value` otherwise), so re-typing an attribute in use would
+invalidate it. Refused with a `type` error naming the count.
+
+Validation errors come back per field (`name`, `code`, `type`, `sort_order`,
+`options`). Name and code are both unique across all attributes; values are
+unique within an attribute, compared case-insensitively.
+
+`POST /admin/attributes/{id}/delete` → redirect. **Refused with a flash while any
+product carries the attribute** (`product_attributes.attribute_id` is `ON DELETE
+CASCADE`, so proceeding would delete that product data too). There is no
+disabled state to fall back on, so refusing is the safe answer — the same
+contract as deleting a category that still has products.
+
+Not exposed, deliberately: **filterable** and **show on product page**.
+`FilterProducts` matches on search, category and price only, and the storefront
+product page never loads `product_attributes` — either switch would have no
+backend effect. `is_required` *is* stored but is **not yet enforced** by product
+validation, and the form says so rather than implying otherwise.
+
 ### Collections
 
 A collection is a **curated merchandising group** (`collections` +
