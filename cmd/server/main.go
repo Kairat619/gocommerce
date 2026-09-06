@@ -127,6 +127,7 @@ func main() {
 	adminHandler := handler.NewAdminHandler(renderer, queries, pool, settingsService)
 	adminCouponHandler := handler.NewAdminCouponHandler(renderer, queries)
 	adminCollectionHandler := handler.NewAdminCollectionHandler(renderer, queries, pool)
+	adminAttributeHandler := handler.NewAdminAttributeHandler(renderer, queries, pool)
 
 	// --- Media Storage (Cloudflare R2 when configured, local disk otherwise) ---
 	var mediaStore storage.Storage = storage.NewLocal()
@@ -236,10 +237,22 @@ func main() {
 		r.Post("/admin/products/{id}", adminHandler.UpdateProduct())
 		r.Post("/admin/products/{id}/delete", adminHandler.DeleteProduct())
 
-		// Product form support: media uploads and the attribute catalogue
+		// Product form support: media uploads and the attribute catalogue.
+		// These two JSON endpoints back the product form's inline attribute
+		// creator and predate the admin Attributes screens; they stay as they
+		// are (see API_CONTRACT.md — they are not to become a REST API).
 		r.Post("/admin/uploads", uploadHandler.Store())
 		r.Post("/admin/attributes", adminHandler.StoreAttribute())
 		r.Post("/admin/attributes/{id}/options", adminHandler.StoreAttributeOption())
+
+		// Attributes. Inertia pages, deliberately on distinct paths from the two
+		// JSON endpoints above so neither shadows the other.
+		r.Get("/admin/attributes", adminAttributeHandler.List())
+		r.Get("/admin/attributes/create", adminAttributeHandler.Create())
+		r.Post("/admin/attributes/create", adminAttributeHandler.Store())
+		r.Get("/admin/attributes/{id}/edit", adminAttributeHandler.Edit())
+		r.Post("/admin/attributes/{id}/edit", adminAttributeHandler.Update())
+		r.Post("/admin/attributes/{id}/delete", adminAttributeHandler.Delete())
 
 		// Categories
 		r.Get("/admin/categories", adminHandler.ListCategories())

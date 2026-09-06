@@ -23,6 +23,22 @@ Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`API_CONTRACT.md`](API_CON
   placeholder when it has none (`lib/image.categoryImage`)
 - Category descriptions render as HTML on `/categories/{slug}`; the tiles on
   `/categories` show a plain-text excerpt of the same value
+- Attribute management — `/admin/attributes`, create and edit
+- **Renaming an attribute value never disturbs the products using it.** Values
+  are diffed by id, so a rename is an in-place `UPDATE`; the products follow it.
+  Clearing and re-inserting the option list would blank
+  `product_attributes.option_id` (`ON DELETE SET NULL`) on every product — this
+  is the single most important invariant of the attribute editor
+- Removing a value that products use clears it on those products, and the form
+  says so before it happens
+- An attribute's `type` cannot change once any product carries it
+- Deleting an attribute is refused while any product carries it
+- `is_variant` is only ever true for `select`/`multiselect`, enforced server-side
+- Attribute codes always match `^[a-z0-9-]+$`
+- The product form's variant builder still reads `is_variant && options.length > 0`
+- The two JSON endpoints (`POST /admin/attributes`,
+  `POST /admin/attributes/{id}/options`) still back the product form's inline
+  attribute creator and are unchanged by the admin Attributes pages
 - Collection navigation — `/collections`, `/collections/{slug}`
 - Collections are a **merchandising layer, not a second category system**: every
   product keeps its single `products.category_id`, and nothing about
