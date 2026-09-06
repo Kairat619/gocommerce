@@ -184,15 +184,54 @@
  * `Pages/Admin/Categories/Index`
  *
  * @typedef {Object} AdminCategoriesIndexProps
- * @property {{id: string, name: string, slug: string, description: string, sort_order: number, is_active: boolean}[]} categories
+ * @property {{id: string, parent_id: string|null, name: string, slug: string, description: string, image_url: string, sort_order: number, is_active: boolean}[]} categories
  */
 
 /**
- * `Pages/Admin/Categories/Edit`. The slug is derived server-side from `name`;
- * there is no slug field on the form.
+ * One node of the category tree sent to the create and edit forms so the parent
+ * picker can search and expand without a request per keystroke.
  *
- * @typedef {Object} AdminCategoryEditProps
- * @property {{id: string, name: string, slug: string, description: string, image_url: string, sort_order: number, is_active: boolean}} category
+ * @typedef {Object} AdminCategoryNode
+ * @property {string} id
+ * @property {string|null} parent_id  null for a top-level category
+ * @property {string} name
+ * @property {string} slug
+ * @property {boolean} is_active
+ */
+
+/**
+ * The category being edited. `slug` is the storefront URL key: the form posts
+ * it back unchanged unless the merchant edits it, so a rename never moves the
+ * public page on its own.
+ *
+ * @typedef {Object} AdminCategoryDetail
+ * @property {string} id
+ * @property {string|null} parent_id
+ * @property {string} name
+ * @property {string} slug
+ * @property {string} description       raw HTML
+ * @property {string} image_url         "" when unset
+ * @property {number} sort_order
+ * @property {boolean} is_active
+ * @property {string} meta_title
+ * @property {string} meta_description
+ * @property {string} meta_keywords
+ * @property {number} product_count
+ */
+
+/**
+ * `Pages/Admin/Categories/Create`
+ *
+ * @typedef {Object} AdminCategoriesCreateProps
+ * @property {AdminCategoryNode[]} categories
+ */
+
+/**
+ * `Pages/Admin/Categories/Edit`
+ *
+ * @typedef {Object} AdminCategoriesEditProps
+ * @property {AdminCategoryDetail} category
+ * @property {AdminCategoryNode[]} categories
  */
 
 /**

@@ -268,3 +268,11 @@ CREATE TABLE product_attributes (
 );
 
 CREATE TRIGGER trg_attributes_updated_at BEFORE UPDATE ON attributes FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- -------------------------------------------
+-- V5: Category management (search engine fields)
+-- -------------------------------------------
+ALTER TABLE categories
+    ADD COLUMN meta_title VARCHAR(255),
+    ADD COLUMN meta_description TEXT,
+    ADD COLUMN meta_keywords VARCHAR(500);

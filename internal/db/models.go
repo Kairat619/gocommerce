@@ -97,16 +97,19 @@ type AttributeOption struct {
 }
 
 type Category struct {
-	ID          pgtype.UUID        `db:"id" json:"id"`
-	ParentID    pgtype.UUID        `db:"parent_id" json:"parent_id"`
-	Name        string             `db:"name" json:"name"`
-	Slug        string             `db:"slug" json:"slug"`
-	Description pgtype.Text        `db:"description" json:"description"`
-	ImageUrl    pgtype.Text        `db:"image_url" json:"image_url"`
-	SortOrder   int32              `db:"sort_order" json:"sort_order"`
-	IsActive    bool               `db:"is_active" json:"is_active"`
-	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID              pgtype.UUID        `db:"id" json:"id"`
+	ParentID        pgtype.UUID        `db:"parent_id" json:"parent_id"`
+	Name            string             `db:"name" json:"name"`
+	Slug            string             `db:"slug" json:"slug"`
+	Description     pgtype.Text        `db:"description" json:"description"`
+	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
+	SortOrder       int32              `db:"sort_order" json:"sort_order"`
+	IsActive        bool               `db:"is_active" json:"is_active"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
+	MetaKeywords    pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
 }
 
 type Order struct {

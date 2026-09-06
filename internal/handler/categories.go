@@ -64,10 +64,13 @@ func (h *CategoryHandler) Show() http.HandlerFunc {
 
 		h.renderer.Render(w, r, "Pages/Categories/Show", inertia.Props{
 			"category": map[string]any{
-				"id":          fmt.Sprintf("%x", category.ID.Bytes),
-				"name":        category.Name,
-				"slug":        category.Slug,
-				"description": category.Description.String,
+				"id":               fmt.Sprintf("%x", category.ID.Bytes),
+				"name":             category.Name,
+				"slug":             category.Slug,
+				"description":      category.Description.String,
+				"image_url":        category.ImageUrl.String,
+				"meta_title":       category.MetaTitle.String,
+				"meta_description": category.MetaDescription.String,
 			},
 			"products": serializeCategoryProducts(products),
 			"pagination": map[string]any{
@@ -86,6 +89,7 @@ func serializeCategoriesWithCount(categories []db.ListActiveCategoriesRow) []map
 			"name":          c.Name,
 			"slug":          c.Slug,
 			"description":   c.Description.String,
+			"image_url":     c.ImageUrl.String,
 			"product_count": c.ProductCount,
 		}
 	}

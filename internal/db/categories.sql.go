@@ -22,20 +22,88 @@ func (q *Queries) CountAllCategories(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countCategoriesWithSlug = `-- name: CountCategoriesWithSlug :one
+SELECT COUNT(*) FROM categories
+WHERE slug = $1 AND ($2::uuid IS NULL OR id <> $2)
+`
+
+type CountCategoriesWithSlugParams struct {
+	Slug      string      `db:"slug" json:"slug"`
+	ExcludeID pgtype.UUID `db:"exclude_id" json:"exclude_id"`
+}
+
+func (q *Queries) CountCategoriesWithSlug(ctx context.Context, arg CountCategoriesWithSlugParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countCategoriesWithSlug, arg.Slug, arg.ExcludeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countChildCategories = `-- name: CountChildCategories :one
+SELECT COUNT(*) FROM categories WHERE parent_id = $1
+`
+
+func (q *Queries) CountChildCategories(ctx context.Context, parentID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countChildCategories, parentID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countProductsInCategory = `-- name: CountProductsInCategory :one
+SELECT COUNT(*) FROM products WHERE category_id = $1
+`
+
+func (q *Queries) CountProductsInCategory(ctx context.Context, categoryID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsInCategory, categoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countSiblingCategoriesWithName = `-- name: CountSiblingCategoriesWithName :one
+SELECT COUNT(*) FROM categories
+WHERE lower(name) = lower($1::text)
+  AND parent_id IS NOT DISTINCT FROM $2::uuid
+  AND ($3::uuid IS NULL OR id <> $3)
+`
+
+type CountSiblingCategoriesWithNameParams struct {
+	Name      string      `db:"name" json:"name"`
+	ParentID  pgtype.UUID `db:"parent_id" json:"parent_id"`
+	ExcludeID pgtype.UUID `db:"exclude_id" json:"exclude_id"`
+}
+
+// Categories are only required to be uniquely named within one parent, so the
+// comparison uses IS NOT DISTINCT FROM to make two root categories (parent_id
+// NULL) count as siblings.
+func (q *Queries) CountSiblingCategoriesWithName(ctx context.Context, arg CountSiblingCategoriesWithNameParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countSiblingCategoriesWithName, arg.Name, arg.ParentID, arg.ExcludeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCategory = `-- name: CreateCategory :one
-INSERT INTO categories (parent_id, name, slug, description, image_url, sort_order, is_active)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at
+INSERT INTO categories (
+    parent_id, name, slug, description, image_url, sort_order, is_active,
+    meta_title, meta_description, meta_keywords
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at, meta_title, meta_description, meta_keywords
 `
 
 type CreateCategoryParams struct {
-	ParentID    pgtype.UUID `db:"parent_id" json:"parent_id"`
-	Name        string      `db:"name" json:"name"`
-	Slug        string      `db:"slug" json:"slug"`
-	Description pgtype.Text `db:"description" json:"description"`
-	ImageUrl    pgtype.Text `db:"image_url" json:"image_url"`
-	SortOrder   int32       `db:"sort_order" json:"sort_order"`
-	IsActive    bool        `db:"is_active" json:"is_active"`
+	ParentID        pgtype.UUID `db:"parent_id" json:"parent_id"`
+	Name            string      `db:"name" json:"name"`
+	Slug            string      `db:"slug" json:"slug"`
+	Description     pgtype.Text `db:"description" json:"description"`
+	ImageUrl        pgtype.Text `db:"image_url" json:"image_url"`
+	SortOrder       int32       `db:"sort_order" json:"sort_order"`
+	IsActive        bool        `db:"is_active" json:"is_active"`
+	MetaTitle       pgtype.Text `db:"meta_title" json:"meta_title"`
+	MetaDescription pgtype.Text `db:"meta_description" json:"meta_description"`
+	MetaKeywords    pgtype.Text `db:"meta_keywords" json:"meta_keywords"`
 }
 
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
@@ -47,6 +115,9 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 		arg.ImageUrl,
 		arg.SortOrder,
 		arg.IsActive,
+		arg.MetaTitle,
+		arg.MetaDescription,
+		arg.MetaKeywords,
 	)
 	var i Category
 	err := row.Scan(
@@ -60,6 +131,9 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MetaTitle,
+		&i.MetaDescription,
+		&i.MetaKeywords,
 	)
 	return i, err
 }
@@ -74,7 +148,7 @@ func (q *Queries) DeleteCategory(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getCategoryByID = `-- name: GetCategoryByID :one
-SELECT id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at FROM categories WHERE id = $1
+SELECT id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at, meta_title, meta_description, meta_keywords FROM categories WHERE id = $1
 `
 
 func (q *Queries) GetCategoryByID(ctx context.Context, id pgtype.UUID) (Category, error) {
@@ -91,12 +165,15 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id pgtype.UUID) (Category
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MetaTitle,
+		&i.MetaDescription,
+		&i.MetaKeywords,
 	)
 	return i, err
 }
 
 const getCategoryByParentID = `-- name: GetCategoryByParentID :many
-SELECT id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at FROM categories WHERE parent_id = $1
+SELECT id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at, meta_title, meta_description, meta_keywords FROM categories WHERE parent_id = $1
 `
 
 func (q *Queries) GetCategoryByParentID(ctx context.Context, parentID pgtype.UUID) ([]Category, error) {
@@ -119,6 +196,9 @@ func (q *Queries) GetCategoryByParentID(ctx context.Context, parentID pgtype.UUI
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MetaTitle,
+			&i.MetaDescription,
+			&i.MetaKeywords,
 		); err != nil {
 			return nil, err
 		}
@@ -131,7 +211,7 @@ func (q *Queries) GetCategoryByParentID(ctx context.Context, parentID pgtype.UUI
 }
 
 const getCategoryBySlug = `-- name: GetCategoryBySlug :one
-SELECT id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at FROM categories WHERE slug = $1
+SELECT id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at, meta_title, meta_description, meta_keywords FROM categories WHERE slug = $1
 `
 
 func (q *Queries) GetCategoryBySlug(ctx context.Context, slug string) (Category, error) {
@@ -148,12 +228,15 @@ func (q *Queries) GetCategoryBySlug(ctx context.Context, slug string) (Category,
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MetaTitle,
+		&i.MetaDescription,
+		&i.MetaKeywords,
 	)
 	return i, err
 }
 
 const listActiveCategories = `-- name: ListActiveCategories :many
-SELECT c.id, c.parent_id, c.name, c.slug, c.description, c.image_url, c.sort_order, c.is_active, c.created_at, c.updated_at, COUNT(p.id)::bigint AS product_count
+SELECT c.id, c.parent_id, c.name, c.slug, c.description, c.image_url, c.sort_order, c.is_active, c.created_at, c.updated_at, c.meta_title, c.meta_description, c.meta_keywords, COUNT(p.id)::bigint AS product_count
 FROM categories c
 LEFT JOIN products p ON p.category_id = c.id AND p.is_active = true
 WHERE c.is_active = true
@@ -162,17 +245,20 @@ ORDER BY c.sort_order ASC, c.name ASC
 `
 
 type ListActiveCategoriesRow struct {
-	ID           pgtype.UUID        `db:"id" json:"id"`
-	ParentID     pgtype.UUID        `db:"parent_id" json:"parent_id"`
-	Name         string             `db:"name" json:"name"`
-	Slug         string             `db:"slug" json:"slug"`
-	Description  pgtype.Text        `db:"description" json:"description"`
-	ImageUrl     pgtype.Text        `db:"image_url" json:"image_url"`
-	SortOrder    int32              `db:"sort_order" json:"sort_order"`
-	IsActive     bool               `db:"is_active" json:"is_active"`
-	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	ProductCount int64              `db:"product_count" json:"product_count"`
+	ID              pgtype.UUID        `db:"id" json:"id"`
+	ParentID        pgtype.UUID        `db:"parent_id" json:"parent_id"`
+	Name            string             `db:"name" json:"name"`
+	Slug            string             `db:"slug" json:"slug"`
+	Description     pgtype.Text        `db:"description" json:"description"`
+	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
+	SortOrder       int32              `db:"sort_order" json:"sort_order"`
+	IsActive        bool               `db:"is_active" json:"is_active"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
+	MetaKeywords    pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	ProductCount    int64              `db:"product_count" json:"product_count"`
 }
 
 func (q *Queries) ListActiveCategories(ctx context.Context) ([]ListActiveCategoriesRow, error) {
@@ -195,6 +281,9 @@ func (q *Queries) ListActiveCategories(ctx context.Context) ([]ListActiveCategor
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MetaTitle,
+			&i.MetaDescription,
+			&i.MetaKeywords,
 			&i.ProductCount,
 		); err != nil {
 			return nil, err
@@ -208,7 +297,7 @@ func (q *Queries) ListActiveCategories(ctx context.Context) ([]ListActiveCategor
 }
 
 const listCategories = `-- name: ListCategories :many
-SELECT id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at FROM categories
+SELECT id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at, meta_title, meta_description, meta_keywords FROM categories
 ORDER BY sort_order ASC, name ASC
 `
 
@@ -232,6 +321,9 @@ func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MetaTitle,
+			&i.MetaDescription,
+			&i.MetaKeywords,
 		); err != nil {
 			return nil, err
 		}
@@ -243,8 +335,39 @@ func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
 	return items, nil
 }
 
+const listCategorySubtreeIDs = `-- name: ListCategorySubtreeIDs :many
+WITH RECURSIVE subtree AS (
+    SELECT c.id FROM categories c WHERE c.id = $1
+    UNION
+    SELECT c.id FROM categories c JOIN subtree s ON c.parent_id = s.id
+)
+SELECT s.id FROM subtree s
+`
+
+// The category itself plus every descendant. Used to reject a parent that would
+// close a loop in the tree.
+func (q *Queries) ListCategorySubtreeIDs(ctx context.Context, id pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listCategorySubtreeIDs, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRootCategories = `-- name: ListRootCategories :many
-SELECT c.id, c.parent_id, c.name, c.slug, c.description, c.image_url, c.sort_order, c.is_active, c.created_at, c.updated_at, COUNT(p.id)::bigint AS product_count
+SELECT c.id, c.parent_id, c.name, c.slug, c.description, c.image_url, c.sort_order, c.is_active, c.created_at, c.updated_at, c.meta_title, c.meta_description, c.meta_keywords, COUNT(p.id)::bigint AS product_count
 FROM categories c
 LEFT JOIN products p ON p.category_id = c.id AND p.is_active = true
 WHERE c.parent_id IS NULL AND c.is_active = true
@@ -253,17 +376,20 @@ ORDER BY c.sort_order ASC, c.name ASC
 `
 
 type ListRootCategoriesRow struct {
-	ID           pgtype.UUID        `db:"id" json:"id"`
-	ParentID     pgtype.UUID        `db:"parent_id" json:"parent_id"`
-	Name         string             `db:"name" json:"name"`
-	Slug         string             `db:"slug" json:"slug"`
-	Description  pgtype.Text        `db:"description" json:"description"`
-	ImageUrl     pgtype.Text        `db:"image_url" json:"image_url"`
-	SortOrder    int32              `db:"sort_order" json:"sort_order"`
-	IsActive     bool               `db:"is_active" json:"is_active"`
-	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	ProductCount int64              `db:"product_count" json:"product_count"`
+	ID              pgtype.UUID        `db:"id" json:"id"`
+	ParentID        pgtype.UUID        `db:"parent_id" json:"parent_id"`
+	Name            string             `db:"name" json:"name"`
+	Slug            string             `db:"slug" json:"slug"`
+	Description     pgtype.Text        `db:"description" json:"description"`
+	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
+	SortOrder       int32              `db:"sort_order" json:"sort_order"`
+	IsActive        bool               `db:"is_active" json:"is_active"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
+	MetaKeywords    pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	ProductCount    int64              `db:"product_count" json:"product_count"`
 }
 
 func (q *Queries) ListRootCategories(ctx context.Context) ([]ListRootCategoriesRow, error) {
@@ -286,6 +412,9 @@ func (q *Queries) ListRootCategories(ctx context.Context) ([]ListRootCategoriesR
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MetaTitle,
+			&i.MetaDescription,
+			&i.MetaKeywords,
 			&i.ProductCount,
 		); err != nil {
 			return nil, err
@@ -299,7 +428,7 @@ func (q *Queries) ListRootCategories(ctx context.Context) ([]ListRootCategoriesR
 }
 
 const listSubcategories = `-- name: ListSubcategories :many
-SELECT c.id, c.parent_id, c.name, c.slug, c.description, c.image_url, c.sort_order, c.is_active, c.created_at, c.updated_at, COUNT(p.id)::bigint AS product_count
+SELECT c.id, c.parent_id, c.name, c.slug, c.description, c.image_url, c.sort_order, c.is_active, c.created_at, c.updated_at, c.meta_title, c.meta_description, c.meta_keywords, COUNT(p.id)::bigint AS product_count
 FROM categories c
 LEFT JOIN products p ON p.category_id = c.id AND p.is_active = true
 WHERE c.parent_id = $1 AND c.is_active = true
@@ -308,17 +437,20 @@ ORDER BY c.sort_order ASC, c.name ASC
 `
 
 type ListSubcategoriesRow struct {
-	ID           pgtype.UUID        `db:"id" json:"id"`
-	ParentID     pgtype.UUID        `db:"parent_id" json:"parent_id"`
-	Name         string             `db:"name" json:"name"`
-	Slug         string             `db:"slug" json:"slug"`
-	Description  pgtype.Text        `db:"description" json:"description"`
-	ImageUrl     pgtype.Text        `db:"image_url" json:"image_url"`
-	SortOrder    int32              `db:"sort_order" json:"sort_order"`
-	IsActive     bool               `db:"is_active" json:"is_active"`
-	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	ProductCount int64              `db:"product_count" json:"product_count"`
+	ID              pgtype.UUID        `db:"id" json:"id"`
+	ParentID        pgtype.UUID        `db:"parent_id" json:"parent_id"`
+	Name            string             `db:"name" json:"name"`
+	Slug            string             `db:"slug" json:"slug"`
+	Description     pgtype.Text        `db:"description" json:"description"`
+	ImageUrl        pgtype.Text        `db:"image_url" json:"image_url"`
+	SortOrder       int32              `db:"sort_order" json:"sort_order"`
+	IsActive        bool               `db:"is_active" json:"is_active"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	MetaTitle       pgtype.Text        `db:"meta_title" json:"meta_title"`
+	MetaDescription pgtype.Text        `db:"meta_description" json:"meta_description"`
+	MetaKeywords    pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
+	ProductCount    int64              `db:"product_count" json:"product_count"`
 }
 
 func (q *Queries) ListSubcategories(ctx context.Context, parentID pgtype.UUID) ([]ListSubcategoriesRow, error) {
@@ -341,6 +473,9 @@ func (q *Queries) ListSubcategories(ctx context.Context, parentID pgtype.UUID) (
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MetaTitle,
+			&i.MetaDescription,
+			&i.MetaKeywords,
 			&i.ProductCount,
 		); err != nil {
 			return nil, err
@@ -355,20 +490,25 @@ func (q *Queries) ListSubcategories(ctx context.Context, parentID pgtype.UUID) (
 
 const updateCategory = `-- name: UpdateCategory :one
 UPDATE categories
-SET parent_id = $2, name = $3, slug = $4, description = $5, image_url = $6, sort_order = $7, is_active = $8
+SET parent_id = $2, name = $3, slug = $4, description = $5, image_url = $6,
+    sort_order = $7, is_active = $8, meta_title = $9, meta_description = $10,
+    meta_keywords = $11
 WHERE id = $1
-RETURNING id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at
+RETURNING id, parent_id, name, slug, description, image_url, sort_order, is_active, created_at, updated_at, meta_title, meta_description, meta_keywords
 `
 
 type UpdateCategoryParams struct {
-	ID          pgtype.UUID `db:"id" json:"id"`
-	ParentID    pgtype.UUID `db:"parent_id" json:"parent_id"`
-	Name        string      `db:"name" json:"name"`
-	Slug        string      `db:"slug" json:"slug"`
-	Description pgtype.Text `db:"description" json:"description"`
-	ImageUrl    pgtype.Text `db:"image_url" json:"image_url"`
-	SortOrder   int32       `db:"sort_order" json:"sort_order"`
-	IsActive    bool        `db:"is_active" json:"is_active"`
+	ID              pgtype.UUID `db:"id" json:"id"`
+	ParentID        pgtype.UUID `db:"parent_id" json:"parent_id"`
+	Name            string      `db:"name" json:"name"`
+	Slug            string      `db:"slug" json:"slug"`
+	Description     pgtype.Text `db:"description" json:"description"`
+	ImageUrl        pgtype.Text `db:"image_url" json:"image_url"`
+	SortOrder       int32       `db:"sort_order" json:"sort_order"`
+	IsActive        bool        `db:"is_active" json:"is_active"`
+	MetaTitle       pgtype.Text `db:"meta_title" json:"meta_title"`
+	MetaDescription pgtype.Text `db:"meta_description" json:"meta_description"`
+	MetaKeywords    pgtype.Text `db:"meta_keywords" json:"meta_keywords"`
 }
 
 func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error) {
@@ -381,6 +521,9 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 		arg.ImageUrl,
 		arg.SortOrder,
 		arg.IsActive,
+		arg.MetaTitle,
+		arg.MetaDescription,
+		arg.MetaKeywords,
 	)
 	var i Category
 	err := row.Scan(
@@ -394,6 +537,9 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MetaTitle,
+		&i.MetaDescription,
+		&i.MetaKeywords,
 	)
 	return i, err
 }

@@ -8,20 +8,17 @@
  * ---------------------------------------------------------------------------
  * STOPGAP: `decorativeImage`
  * ---------------------------------------------------------------------------
- * Categories and editorial bands currently have no imagery available in their
- * page props, so several pages hardcode picsum.photos URLs. Those URLs were
- * being selected by ARRAY INDEX, which meant a category's picture silently
- * changed whenever the list was reordered.
+ * Editorial bands still have no imagery in their page props, so a few pages
+ * fall back to picsum.photos. Those URLs were once selected by ARRAY INDEX,
+ * which meant a picture silently changed whenever the list was reordered; this
+ * helper seeds from a stable string (a slug) instead. It is still fake imagery
+ * and should be deleted once real URLs are available. Do not work around a
+ * missing image by inventing more placeholder data.
  *
- * This helper seeds from a stable string (a slug) instead, so the image is at
- * least deterministic per entity. It is still fake imagery and should be
- * deleted once real URLs are available.
- *
- * The proper fix is a backend change — `categories.image_url` already exists in
- * the database and is populated by the admin category form; it is simply not
- * included in `serializeCategoriesWithCount`. See API_CONTRACT.md, "Data
- * available in the database but absent from props". Do not work around this by
- * inventing more placeholder data.
+ * Categories are no longer part of that gap: `categories.image_url` is
+ * populated by the admin category form and now travels in the page props, so
+ * use `categoryImage` — it prefers the merchant's own artwork and only falls
+ * back to the placeholder when the category has none.
  */
 
 /** The product's own image, or null when it has none. */
@@ -42,4 +39,16 @@ export function productImage(product) {
 export function decorativeImage(seed, width, height) {
   const key = encodeURIComponent(String(seed || "default"));
   return `https://picsum.photos/seed/${key}/${width}/${height}`;
+}
+
+/**
+ * A category's own artwork, falling back to the deterministic placeholder for
+ * categories the merchant has not given an image yet.
+ *
+ * @param {import('../types/commerce').Category} category
+ * @param {number} width   placeholder dimensions only
+ * @param {number} height
+ */
+export function categoryImage(category, width, height) {
+  return category?.image_url || decorativeImage(`category-${category?.slug}`, width, height);
 }

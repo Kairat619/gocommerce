@@ -139,10 +139,15 @@ Note it does **not** include `is_featured`'s siblings from the admin shape:
 
 ```jsonc
 { "id": "…hex…", "name": "…", "slug": "…", "description": "…",
+  "image_url": "…",             // "" when the category has no image
   "product_count": 7 }          // product_count only from serializeCategoriesWithCount
 ```
 
-`image_url` is **not** exposed on storefront category props.
+`description` is **HTML** — it comes from the admin rich-text editor. Render it
+with `dangerouslySetInnerHTML`, or take a blurb through `lib/html.excerpt`.
+
+The category **detail** page (`GET /categories/{slug}`) adds `meta_title` and
+`meta_description` and omits `product_count`.
 
 ### `order`
 
@@ -239,7 +244,7 @@ Unknown slug → `Pages/Errors/404`, HTTP 404.
 
 | Prop | Shape |
 |---|---|
-| `category` | `{id, name, slug, description}` — no `product_count` |
+| `category` | `{id, name, slug, description, image_url, meta_title, meta_description}` — no `product_count` |
 | `products` | `product[]` (category form — no `compare_at_price`/`sku`/`is_featured`) |
 | `pagination` | `{current, total}` |
 
@@ -477,15 +482,45 @@ meta keywords 500, URL key 255. Slug and SKU uniqueness are checked server-side.
 
 | Route | Page | Props |
 |---|---|---|
-| `GET /admin/categories` | `Admin/Categories/Index` | `categories[]` = `{id, name, slug, description, sort_order, is_active}` |
-| `GET /admin/categories/create` | `Admin/Categories/Create` | `{}` |
-| `GET /admin/categories/{id}/edit` | `Admin/Categories/Edit` | `category` = `{id, name, slug, description, image_url, sort_order, is_active}` |
+| `GET /admin/categories` | `Admin/Categories/Index` | `categories[]` = `{id, parent_id, name, slug, description, image_url, sort_order, is_active}` |
+| `GET /admin/categories/create` | `Admin/Categories/Create` | `categories[]` = the tree: `{id, parent_id, name, slug, is_active}` |
+| `GET /admin/categories/{id}/edit` | `Admin/Categories/Edit` | `category`, plus the same `categories[]` tree |
 
-`POST /admin/categories` and `POST /admin/categories/{id}` fields: `name`,
-`description`, `image_url`, `sort_order`, `is_active` (`"true"`/`"on"`).
-**The slug is derived server-side from `name`** — there is no slug field.
+`category` on the edit page:
 
-`POST /admin/categories/{id}/delete` → redirect.
+```jsonc
+{ "id": "…hex…", "parent_id": null, "name": "…", "slug": "…",
+  "description": "…HTML…", "image_url": "…", "sort_order": 0, "is_active": true,
+  "meta_title": "…", "meta_description": "…", "meta_keywords": "…",
+  "product_count": 7 }
+```
+
+`parent_id` is `null` for a top-level category — it is the one category field
+that is genuinely nullable rather than flattened to `""`.
+
+`POST /admin/categories` and `POST /admin/categories/{id}` take a **JSON body**
+(like the product form, not `parseInput`):
+
+```jsonc
+{ "name": "…", "url_key": "…", "description": "…HTML…", "parent_id": "…hex…|\"\"",
+  "image_url": "…", "sort_order": "0", "is_active": true,
+  "meta_title": "…", "meta_description": "…", "meta_keywords": "…",
+  "redirect_to": "index|edit" }
+```
+
+`url_key` is the storefront slug. The form posts the category's existing slug
+back unchanged on edit, so **a rename no longer moves the public URL**; the
+server only derives a slug from `name` when `url_key` is empty. `redirect_to:
+"edit"` keeps the admin on the category after save.
+
+Validation errors come back per field (`name`, `url_key`, `parent_id`,
+`sort_order`, `image_url`, `meta_title`, `meta_description`, `meta_keywords`)
+via `inertia.WithValidationErrors`.
+
+`POST /admin/categories/{id}/delete` → redirect. Refused with a flash while the
+category still has products (`products.category_id` is `ON DELETE RESTRICT`);
+subcategories survive as top-level categories (`parent_id` is `ON DELETE SET
+NULL`) and the success flash says so.
 
 ### Orders
 
@@ -564,7 +599,6 @@ than inventing a workaround.
 
 | Data | Where it lives | Frontend consequence today |
 |---|---|---|
-| `categories.image_url` | populated by the admin category form | The storefront cannot render real category images, so `Welcome.jsx` and `Categories/*.jsx` use hardcoded `picsum.photos` URLs picked by array index — meaning a category's image changes when sort order changes |
 | `products.short_description` | migration 004, in admin props | Cards must truncate `description` (which is HTML) instead |
 | `products.brand` | migration 004, in admin props | No brand display or brand filtering on the storefront |
 | `products.tags` | migration 004, in admin props | No tag display or tag filtering |
