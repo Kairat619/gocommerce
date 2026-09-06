@@ -110,7 +110,10 @@
  * @property {string} name
  * @property {string} slug
  * @property {string} description
+ * @property {string} image_url       "" when unset
  * @property {number} [product_count] present only from serializeCategoriesWithCount
+ * @property {string} [meta_title]       category detail page only
+ * @property {string} [meta_description] category detail page only
  */
 
 /**

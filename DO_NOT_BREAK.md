@@ -19,6 +19,10 @@ Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`API_CONTRACT.md`](API_CON
 - Filter state round-trips: the server echoes `search`, `category`, `min_price`,
   `max_price` back as props so the filter form stays populated after a visit
 - Category navigation — `/categories`, `/categories/{slug}`
+- Category imagery — a category's own `image_url`, falling back to the seeded
+  placeholder when it has none (`lib/image.categoryImage`)
+- Category descriptions render as HTML on `/categories/{slug}`; the tiles on
+  `/categories` show a plain-text excerpt of the same value
 - Product detail — `/products/{slug}`, including an unknown slug rendering the
   404 page with HTTP 404 (not a redirect, not a 500)
 - Product image gallery — primary `image_url` plus `product_images` rows
@@ -66,6 +70,27 @@ Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`API_CONTRACT.md`](API_CON
 - Attribute and attribute-option creation via the two JSON endpoints
 - Media upload to `POST /admin/uploads` returning `{url, name, size}`
 - Category list, create, edit, delete
+- The category list renders the **tree**: children indented under their parent
+  with guide lines, per-branch expand/collapse, expand/collapse all, and a
+  search that keeps the ancestors of every match. Every category is always on
+  the page exactly once — a row must never disappear, including one stranded in
+  a parent loop, which is shown at the top level marked "Detached"
+- **The category form workflow in `frontend/src/Components/Admin/Categories/**`
+  matches the product form and is settled.** Parent picker, single-image
+  uploader, rich-text description, SEO panel and sticky actions all keep
+  working, and Create and Edit keep sharing `CategoryForm`.
+- Category form posts a **JSON body** (not form-encoded) to
+  `POST /admin/categories` and `POST /admin/categories/{id}`
+- Category form validation errors return per-field: `name`, `url_key`,
+  `parent_id`, `sort_order`, `image_url`, `meta_*`
+- `redirect_to: "edit"` keeps the admin on the category after save
+- **A category rename never changes its storefront slug.** The form posts the
+  existing `url_key` back; only an explicit edit to that field moves
+  `/categories/{slug}`
+- Category nesting: a category can never be saved under itself or one of its own
+  descendants — the picker greys those rows out and the server rejects them
+- Deleting a category with products is refused with an explanatory flash, not a
+  raw Postgres error
 - Order list with status filter; order detail; order status update
 - Customer list and customer detail
 - Store settings — tax rate, shipping cost, free-shipping threshold

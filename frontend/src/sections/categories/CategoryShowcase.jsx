@@ -2,15 +2,13 @@ import { Link } from "@inertiajs/react";
 import Container from "../../Components/UI/Container";
 import SectionHeading from "../../Components/UI/SectionHeading";
 import cn from "../../lib/cn";
-import { decorativeImage } from "../../lib/image";
+import { categoryImage } from "../../lib/image";
 
 /**
  * Category tiles.
  *
- * The imagery is still a seeded placeholder: `categories.image_url` exists in
- * the database and is populated by the admin category form, but is not part of
- * the category page props. Exposing it is a backend change — see
- * API_CONTRACT.md, "Data available in the database but absent from props".
+ * Imagery comes from the category's own `image_url`, set on the admin category
+ * form; categories without one fall back to a seeded placeholder.
  *
  * @param {Object} props
  * @param {import('../../types/commerce').Category[]} props.categories
@@ -55,7 +53,7 @@ export default function CategoryShowcase({
             )}
           >
             <img
-              src={decorativeImage(`category-${cat.slug}`, 800, 1000)}
+              src={categoryImage(cat, 800, 1000)}
               alt={cat.name}
               loading="lazy"
               className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"

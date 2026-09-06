@@ -1,6 +1,7 @@
 import { Head, Link } from "@inertiajs/react";
 import StoreLayout from "../../Components/StoreLayout";
-import { decorativeImage } from "../../lib/image";
+import { excerpt } from "../../lib/html";
+import { categoryImage } from "../../lib/image";
 import { pageTitle } from "../../lib/brand";
 import { asList } from "../../lib/props";
 
@@ -31,7 +32,7 @@ export default function CategoriesIndex({ categories }) {
             className="group relative aspect-[4/5] overflow-hidden bg-surface-container"
           >
             <img
-              src={decorativeImage(`category-${cat.slug}`, 900, 1100)}
+              src={categoryImage(cat, 900, 1100)}
               alt={cat.name}
               loading="lazy"
               className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
@@ -43,7 +44,7 @@ export default function CategoriesIndex({ categories }) {
               </h2>
               {cat.description && (
                 <p className="mt-1 line-clamp-2 max-w-xs text-body-sm text-white/80">
-                  {cat.description}
+                  {excerpt(cat.description)}
                 </p>
               )}
               <span className="mt-3 inline-flex items-center gap-2 text-label-sm font-semibold uppercase tracking-[0.12em] text-white">

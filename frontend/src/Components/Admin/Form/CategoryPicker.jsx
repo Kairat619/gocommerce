@@ -34,10 +34,30 @@ function ancestorsOf(id, byId) {
   return chain;
 }
 
+const NO_DISABLED_IDS = new Set();
+
 // Hierarchical category selector. Searching stays client-side because the whole
 // (small) category tree is already delivered with the page; matched branches are
 // expanded automatically so deep trees stay navigable.
-export default function CategoryPicker({ label, categories = [], value, onChange, error, hint, required }) {
+//
+// `disabledIds`, `disabledHint` and `rootOption` are what the category form adds
+// on top of the product picker: a category may not be reparented under itself or
+// one of its own descendants, and it needs a way to say "no parent at all".
+// Leaving them unset keeps the product-form behaviour exactly as it was.
+export default function CategoryPicker({
+  label,
+  categories = [],
+  value,
+  onChange,
+  error,
+  hint,
+  required,
+  disabledIds = NO_DISABLED_IDS,
+  disabledHint,
+  rootOption,
+  emptyMessage = "No categories yet. Create one under Categories first.",
+  searchPlaceholder = "Search categories",
+}) {
   const { byId, children, roots } = useMemo(() => buildTree(categories), [categories]);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(() => new Set());
@@ -81,11 +101,14 @@ export default function CategoryPicker({ label, categories = [], value, onChange
     const kids = children.get(category.id) || [];
     const isOpen = visible ? true : expanded.has(category.id);
     const isSelected = value === category.id;
+    const isDisabled = disabledIds.has(category.id);
 
     return (
       <li key={category.id}>
         <div
-          className={`flex items-center gap-1 rounded-md pr-2 ${isSelected ? "bg-indigo-50" : "hover:bg-gray-50"}`}
+          className={`flex items-center gap-1 rounded-md pr-2 ${
+            isSelected ? "bg-indigo-50" : isDisabled ? "" : "hover:bg-gray-50"
+          }`}
           style={{ paddingLeft: `${depth * 16}px` }}
         >
           {kids.length > 0 ? (
@@ -109,13 +132,20 @@ export default function CategoryPicker({ label, categories = [], value, onChange
 
           <button
             type="button"
+            disabled={isDisabled}
+            aria-disabled={isDisabled || undefined}
             onClick={() => onChange(isSelected ? "" : category.id)}
             className={`flex-1 truncate py-1.5 text-left text-sm ${
-              isSelected ? "font-medium text-indigo-700" : "text-gray-700"
+              isDisabled
+                ? "cursor-not-allowed text-gray-400"
+                : isSelected
+                  ? "font-medium text-indigo-700"
+                  : "text-gray-700"
             }`}
           >
             {category.name}
             {category.is_active === false && <span className="ml-2 text-xs text-gray-400">(inactive)</span>}
+            {isDisabled && disabledHint && <span className="ml-2 text-xs text-gray-400">{disabledHint}</span>}
           </button>
 
           {isSelected && (
@@ -163,15 +193,43 @@ export default function CategoryPicker({ label, categories = [], value, onChange
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search categories"
+        placeholder={searchPlaceholder}
+        aria-label={searchPlaceholder}
         className={`${inputClass(error)} mb-2`}
       />
 
       <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 p-1">
+        {rootOption && !query.trim() && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            aria-pressed={!value}
+            className={`mb-1 flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm ${
+              value ? "text-gray-700 hover:bg-gray-50" : "bg-indigo-50 font-medium text-indigo-700"
+            }`}
+          >
+            <span className="min-w-0">
+              <span className="block truncate">{rootOption.label}</span>
+              {rootOption.description && (
+                <span className={`block text-xs ${value ? "text-gray-500" : "text-indigo-600"}`}>
+                  {rootOption.description}
+                </span>
+              )}
+            </span>
+            {!value && (
+              <svg className="h-4 w-4 flex-shrink-0 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 111.4-1.4l3.8 3.79 6.8-6.8a1 1 0 011.4 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+          </button>
+        )}
+
         {categories.length === 0 ? (
-          <p className="px-2 py-3 text-sm text-gray-500">
-            No categories yet. Create one under Categories first.
-          </p>
+          <p className="px-2 py-3 text-sm text-gray-500">{emptyMessage}</p>
         ) : (
           <ul>{roots.map((root) => renderNode(root, 0))}</ul>
         )}
