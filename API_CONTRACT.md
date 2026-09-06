@@ -272,9 +272,28 @@ All redirect. All accept flat JSON or form bodies.
 | `POST /cart/update` | `product_id`, `quantity` (≤ 0 removes the line) | → `/cart` |
 | `POST /cart/remove` | `product_id` | → `/cart` |
 | `POST /cart/clear` | — | → `/cart` + success flash |
+| `POST /cart/coupon` | `code` | → `/cart` + success flash |
+| `POST /cart/coupon/remove` | — | → `/cart` + success flash |
 
 `POST /cart/add` redirects to the **`Referer`** header on every failure path, so
 a missing referer degrades badly. Do not rely on staying in place after an error.
+
+`POST /cart/coupon` reports a bad code as the **field error `code`**, not a flash,
+so the reason appears next to the input. A rejected code leaves any
+already-applied coupon untouched.
+
+### Coupons
+
+`GET /cart` and `GET /checkout` both carry a `coupon` prop: `null`, or
+`{coupon_id, code, description, discount_type, discount_amount, free_shipping}`.
+Only the **code** lives in the session — the coupon is re-evaluated by
+`service.CouponService.Evaluate` on every render, so one that expires or stops
+qualifying simply disappears from the prop. Never cache `discount_amount`.
+
+`GET /checkout` also carries `totals` = `{subtotal, discount, tax, shipping,
+total}`, produced by `service.ComputeTotals` — the same function `CreateOrder`
+charges from. Prefer it over recomputing from `tax_rate` / `shipping_cost` /
+`free_shipping_threshold`, which remain in the props for the other views.
 
 ---
 
@@ -483,6 +502,9 @@ meta keywords 500, URL key 255. Slug and SKU uniqueness are checked server-side.
 | Route | Page | Props |
 |---|---|---|
 | `GET /admin/categories` | `Admin/Categories/Index` | `categories[]` = `{id, parent_id, name, slug, description, image_url, sort_order, is_active}` |
+| `GET /admin/coupons` | `Admin/Coupons/Index` | `coupons[]` = `{id, code, description, is_active, discount_type, discount_value, max_discount_amount, min_order_amount, min_order_quantity, max_uses, max_uses_per_customer, used_count, starts_at, ends_at, lifecycle}` |
+| `GET /admin/coupons/create` | `Admin/Coupons/Create` | — |
+| `GET /admin/coupons/{id}/edit` | `Admin/Coupons/Edit` | `coupon` = one row of the above |
 | `GET /admin/categories/create` | `Admin/Categories/Create` | `categories[]` = the tree: `{id, parent_id, name, slug, is_active}` |
 | `GET /admin/categories/{id}/edit` | `Admin/Categories/Edit` | `category`, plus the same `categories[]` tree |
 
@@ -497,6 +519,15 @@ meta keywords 500, URL key 255. Slug and SKU uniqueness are checked server-side.
 
 `parent_id` is `null` for a top-level category — it is the one category field
 that is genuinely nullable rather than flattened to `""`.
+
+`POST /admin/coupons` and `POST /admin/coupons/{id}` take a **JSON body** whose
+numeric fields are all **strings**, so blank ("no minimum", "unlimited") is
+distinguishable from a literal `0`: `code`, `description`, `is_active` (bool),
+`discount_type` (`percentage` | `fixed` | `free_shipping`), `discount_value`,
+`max_discount_amount`, `min_order_amount`, `min_order_quantity`, `max_uses`,
+`max_uses_per_customer`, `starts_at`, `ends_at` (both `datetime-local`, server
+timezone), `redirect_to`. Validation error keys match those field names. Codes
+are normalised to upper case before the uniqueness check.
 
 `POST /admin/categories` and `POST /admin/categories/{id}` take a **JSON body**
 (like the product form, not `parseInput`):

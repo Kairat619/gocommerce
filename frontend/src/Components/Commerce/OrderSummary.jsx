@@ -3,10 +3,9 @@ import { formatMoney, formatLineTotal } from "../../lib/money";
 /**
  * The checkout order summary: the lines, then the arithmetic.
  *
- * The totals are computed by the caller from the rates the server sent
- * (`tax_rate` as a fraction, `shipping_cost`, `free_shipping_threshold`) and
- * must stay in agreement with what the Go order service will charge. This
- * component only renders them.
+ * The totals come from the server's `totals` prop, which service.ComputeTotals
+ * produced — the same function CreateOrder charges from, so what is shown here
+ * is what gets billed. This component only renders them.
  *
  * @param {Object} props
  * @param {import('../../types/commerce').CartItem[]} props.items
@@ -14,6 +13,8 @@ import { formatMoney, formatLineTotal } from "../../lib/money";
  * @param {number} props.tax
  * @param {number} props.shipping   0 means free
  * @param {number} props.total
+ * @param {number} [props.discount]  money off the subtotal, 0 when no coupon
+ * @param {import('../../types/commerce').AppliedCoupon} [props.coupon]
  * @param {number} props.freeShippingThreshold
  * @param {React.ReactNode} [props.children] the submit button
  */
@@ -23,10 +24,14 @@ export default function OrderSummary({
   tax,
   shipping,
   total,
+  discount = 0,
+  coupon = null,
   freeShippingThreshold,
   children,
 }) {
-  const remainingForFreeShipping = freeShippingThreshold - subtotal;
+  // Measured against what the customer actually pays for goods, matching
+  // ComputeTotals on the server.
+  const remainingForFreeShipping = freeShippingThreshold - (subtotal - discount);
 
   return (
     <div className="sticky top-24 border border-ink/10 bg-white p-6">
@@ -55,6 +60,14 @@ export default function OrderSummary({
           <dt className="text-muted-foreground">Subtotal</dt>
           <dd className="font-medium text-ink">{formatMoney(subtotal)}</dd>
         </div>
+        {discount > 0 && (
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">
+              Discount{coupon?.code ? ` (${coupon.code})` : ""}
+            </dt>
+            <dd className="font-medium text-green-700">-{formatMoney(discount)}</dd>
+          </div>
+        )}
         <div className="flex justify-between">
           <dt className="text-muted-foreground">Tax</dt>
           <dd className="font-medium text-ink">{formatMoney(tax)}</dd>
@@ -63,7 +76,9 @@ export default function OrderSummary({
           <dt className="text-muted-foreground">Shipping</dt>
           <dd className="font-medium text-ink">
             {shipping === 0 ? (
-              <span className="text-green-700">Free</span>
+              <span className="text-green-700">
+                Free{coupon?.free_shipping ? ` (${coupon.code})` : ""}
+              </span>
             ) : (
               formatMoney(shipping)
             )}

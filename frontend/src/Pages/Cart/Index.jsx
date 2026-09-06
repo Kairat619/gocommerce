@@ -3,13 +3,17 @@ import StoreLayout from "../../Components/StoreLayout";
 import Button from "../../Components/UI/Button";
 import EmptyState from "../../Components/UI/EmptyState";
 import CartItem from "../../Components/Commerce/CartItem";
+import CouponField from "../../Components/Commerce/CouponField";
 import { formatMoney } from "../../lib/money";
 import { asCart } from "../../lib/props";
 import { pageTitle } from "../../lib/brand";
 
 /** @param {import('../../types/pages').CartIndexProps} props */
-export default function CartIndex({ cart }) {
+export default function CartIndex({ cart, coupon = null }) {
   const { items, total_price: totalPrice } = asCart(cart);
+
+  // Sent by the server, already re-validated against this cart.
+  const discount = coupon && !coupon.free_shipping ? Number(coupon.discount_amount) || 0 : 0;
 
   function updateQuantity(productId, quantity) {
     router.post(
@@ -72,14 +76,32 @@ export default function CartIndex({ cart }) {
               </button>
 
               <div className="w-full sm:max-w-xs">
+                <div className="mb-6">
+                  <CouponField coupon={coupon} />
+                </div>
+
                 <div className="flex items-baseline justify-between border-b border-ink/10 pb-4">
                   <span className="text-label-lg font-semibold uppercase tracking-[0.1em] text-ink">
-                    Subtotal
+                    {discount > 0 ? "Total" : "Subtotal"}
                   </span>
                   <span className="text-headline-lg font-semibold text-ink">
-                    {formatMoney(totalPrice)}
+                    {formatMoney(totalPrice - discount)}
                   </span>
                 </div>
+
+                {discount > 0 && (
+                  <dl className="mt-3 space-y-1.5 text-body-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Subtotal</dt>
+                      <dd className="text-ink">{formatMoney(totalPrice)}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Discount ({coupon.code})</dt>
+                      <dd className="text-green-700">-{formatMoney(discount)}</dd>
+                    </div>
+                  </dl>
+                )}
+
                 <p className="mt-3 text-body-sm text-muted-foreground">
                   Tax and shipping are calculated at checkout.
                 </p>

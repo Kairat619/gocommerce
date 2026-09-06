@@ -47,7 +47,29 @@ Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`API_CONTRACT.md`](API_CON
 - Tax, shipping and free-shipping-threshold arithmetic matches the values the
   server sent (`tax_rate`, `shipping_cost`, `free_shipping_threshold`)
 - Required shipping fields are enforced: name, address, city, postal code, country
+- Coupons — a code applied at `/cart` survives to `/checkout`; only the **code**
+  is stored in the session, so the discount is re-evaluated on every render and a
+  coupon that expires or stops qualifying silently drops out
+- Coupon rejection reasons reach the shopper as the **field error `code`**
+  (not valid / disabled / not started / expired / usage limit / already used /
+  minimum not met / sign-in needed), and a rejected code never removes a coupon
+  that is already applied
+- Discount arithmetic: discount comes off the subtotal, tax is charged on the
+  discounted subtotal, then shipping; a free-shipping coupon zeroes shipping;
+  the free-shipping threshold is measured against the discounted subtotal
+- A discount never exceeds the subtotal, and a percentage cap is honoured
+- With no coupon the totals are **identical** to the pre-coupon arithmetic
+  (`subtotal + subtotal * tax_rate + shipping`)
+- `GET /checkout` sends `totals` from `service.ComputeTotals`, the same function
+  `CreateOrder` charges from — the figure shown is the figure billed
 - Order creation and stock decrement
+- Redemption is booked **after** the order exists: `coupons.used_count` is
+  incremented and a `coupon_redemptions` row is written, so an abandoned
+  checkout never consumes a coupon
+- Placing an order clears both the cart and the applied coupon
+- Orders keep `coupon_code` and `discount` as placed — editing or deleting the
+  coupon afterwards never rewrites order history
+- Editing a coupon never resets `used_count`
 - Order confirmation — `/checkout/confirmation/{id}`
 - Customer account — `/account`, profile update
 - Order history — `/account/orders`, `/account/orders/{id}`
@@ -70,6 +92,19 @@ Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`API_CONTRACT.md`](API_CON
 - Attribute and attribute-option creation via the two JSON endpoints
 - Media upload to `POST /admin/uploads` returning `{url, name, size}`
 - Category list, create, edit, delete
+- Coupon list, create, edit, delete. The list filters by lifecycle
+  (active / scheduled / expired+limit-reached / disabled) and searches code and
+  internal note
+- **The coupon form workflow in `frontend/src/Components/Admin/Coupons/**` matches
+  the product and category forms.** Create and Edit share `CouponForm`; the code
+  field, conditional discount fields, conditions, usage limits, validity and the
+  live summary all keep working
+- Coupon form posts a **JSON body** to `POST /admin/coupons` and
+  `POST /admin/coupons/{id}`, with every numeric field as a string so blank
+  (unlimited / no minimum) stays distinct from `0`
+- Coupon codes are stored upper-cased and are unique; duplicates return the
+  field error `code`
+- Fields irrelevant to the selected discount type are not submitted
 - The category list renders the **tree**: children indented under their parent
   with guide lines, per-branch expand/collapse, expand/collapse all, and a
   search that keeps the ancestors of every match. Every category is always on

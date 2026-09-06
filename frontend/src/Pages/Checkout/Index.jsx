@@ -35,13 +35,22 @@ export default function CheckoutIndex({
   tax_rate,
   shipping_cost,
   free_shipping_threshold,
+  totals,
+  coupon = null,
 }) {
   const { items, total_price: subtotal } = asCart(cart);
   const savedAddresses = asList(addresses);
 
-  const tax = subtotal * tax_rate;
-  const shipping = subtotal >= free_shipping_threshold ? 0 : shipping_cost;
-  const total = subtotal + tax + shipping;
+  // The server computes these with service.ComputeTotals — the same function
+  // CreateOrder charges from — so the figures shown are the figures billed.
+  // The rate-based fallback keeps this page working if `totals` is ever absent.
+  const fallbackShipping = subtotal >= free_shipping_threshold ? 0 : shipping_cost;
+  const {
+    discount = 0,
+    tax = subtotal * tax_rate,
+    shipping = fallbackShipping,
+    total = subtotal + subtotal * tax_rate + fallbackShipping,
+  } = totals ?? {};
 
   const [shippingAddress, setShippingAddress] = useState(emptyShipping);
   const [billingAddress, setBillingAddress] = useState(emptyBilling);
@@ -187,6 +196,8 @@ export default function CheckoutIndex({
               tax={tax}
               shipping={shipping}
               total={total}
+              discount={discount}
+              coupon={coupon}
               freeShippingThreshold={free_shipping_threshold}
             >
               <Button

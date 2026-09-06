@@ -7,8 +7,8 @@ JOIN users u ON u.id = o.user_id
 WHERE o.id = $1;
 
 -- name: CreateOrder :one
-INSERT INTO orders (user_id, status, total, subtotal, tax, shipping_cost, discount, notes, shipping_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_name, billing_address, billing_city, billing_state, billing_postal_code, billing_country)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+INSERT INTO orders (user_id, status, total, subtotal, tax, shipping_cost, discount, coupon_code, notes, shipping_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_name, billing_address, billing_city, billing_state, billing_postal_code, billing_country)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
 RETURNING *;
 
 -- name: UpdateOrderStatus :exec

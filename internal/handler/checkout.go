@@ -18,10 +18,11 @@ type CheckoutHandler struct {
 	renderer *inertia.Renderer
 	order    *service.OrderService
 	settings *service.SettingsService
+	coupons  *service.CouponService
 }
 
-func NewCheckoutHandler(renderer *inertia.Renderer, order *service.OrderService, settings *service.SettingsService) *CheckoutHandler {
-	return &CheckoutHandler{renderer: renderer, order: order, settings: settings}
+func NewCheckoutHandler(renderer *inertia.Renderer, order *service.OrderService, settings *service.SettingsService, coupons *service.CouponService) *CheckoutHandler {
+	return &CheckoutHandler{renderer: renderer, order: order, settings: settings, coupons: coupons}
 }
 
 func (h *CheckoutHandler) Show() http.HandlerFunc {
@@ -53,12 +54,30 @@ func (h *CheckoutHandler) Show() http.HandlerFunc {
 
 		settings := h.settings.Get(r.Context())
 
+		// Re-evaluated here, so a coupon that lapsed between the cart and the
+		// checkout page is gone before the customer sees a total.
+		applied := h.coupons.ForSession(r.Context(), sess, cart, userIDStr)
+
+		discount := 0.0
+		freeShipping := false
+		if applied != nil {
+			discount = applied.DiscountAmount
+			freeShipping = applied.FreeShipping
+		}
+
 		h.renderer.Render(w, r, "Pages/Checkout/Index", inertia.Props{
-			"cart":                    cart,
-			"addresses":               addresses,
+			"cart":      cart,
+			"addresses": addresses,
+			// The rates stay in the props: the page has always computed from
+			// them and other views still do.
 			"tax_rate":                settings.TaxRate,
 			"shipping_cost":           settings.ShippingCost,
 			"free_shipping_threshold": settings.FreeShippingThreshold,
+
+			"coupon": applied,
+			// Computed by the same function CreateOrder charges from, so the
+			// figure shown is the figure billed.
+			"totals": service.ComputeTotals(settings, cart.TotalPrice, discount, freeShipping),
 		})
 	}
 }
@@ -168,6 +187,7 @@ func serializeOrder(o *db.GetOrderByIDRow) map[string]any {
 		"tax":                  formatNumeric(o.Tax),
 		"shipping_cost":        formatNumeric(o.ShippingCost),
 		"discount":             formatNumeric(o.Discount),
+		"coupon_code":          o.CouponCode.String,
 		"notes":                o.Notes.String,
 		"shipping_name":        o.ShippingName,
 		"shipping_address":     o.ShippingAddress,
