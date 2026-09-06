@@ -28,10 +28,11 @@ type CartHandler struct {
 	renderer *inertia.Renderer
 	cart     *service.CartService
 	queries  *db.Queries
+	coupons  *service.CouponService
 }
 
-func NewCartHandler(renderer *inertia.Renderer, cart *service.CartService, queries *db.Queries) *CartHandler {
-	return &CartHandler{renderer: renderer, cart: cart, queries: queries}
+func NewCartHandler(renderer *inertia.Renderer, cart *service.CartService, queries *db.Queries, coupons *service.CouponService) *CartHandler {
+	return &CartHandler{renderer: renderer, cart: cart, queries: queries, coupons: coupons}
 }
 
 // Show renders the cart page.
@@ -42,8 +43,86 @@ func (h *CartHandler) Show() http.HandlerFunc {
 
 		h.renderer.Render(w, r, "Pages/Cart/Index", inertia.Props{
 			"cart": cart,
+			// Re-evaluated on every render, so a coupon that stopped
+			// qualifying disappears from the page by itself.
+			"coupon": h.coupons.ForSession(r.Context(), sess, cart, sessionUserID(sess)),
 		})
 	}
+}
+
+// ApplyCoupon validates a code against the current cart and remembers it on the
+// session. Only the code is stored — never the discount.
+func (h *CartHandler) ApplyCoupon() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sess := session.FromContext(r.Context())
+
+		fields, err := parseInput(r)
+		if err != nil {
+			h.renderer.Redirect(w, r, "/cart", inertia.WithFlash(inertia.Flash{
+				"error": "Invalid request.",
+			}))
+			return
+		}
+
+		code := fields["code"]
+		if strings.TrimSpace(code) == "" {
+			h.renderer.Redirect(w, r, "/cart", inertia.WithValidationErrors(inertia.ValidationErrors{
+				"code": "Enter a coupon code.",
+			}))
+			return
+		}
+
+		cart := h.cart.Get(sess)
+
+		applied, err := h.coupons.Evaluate(r.Context(), code, cart, sessionUserID(sess))
+		if err != nil {
+			// Shown against the field rather than as a toast, so the shopper
+			// sees the reason next to what they typed.
+			h.renderer.Redirect(w, r, "/cart", inertia.WithValidationErrors(inertia.ValidationErrors{
+				"code": capitalizeFirst(err.Error()) + ".",
+			}))
+			return
+		}
+
+		h.coupons.Store(sess, applied.Code)
+
+		h.renderer.Redirect(w, r, "/cart", inertia.WithFlash(inertia.Flash{
+			"success": fmt.Sprintf("Coupon %s applied.", applied.Code),
+		}))
+	}
+}
+
+// RemoveCoupon drops the applied coupon from the session.
+func (h *CartHandler) RemoveCoupon() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sess := session.FromContext(r.Context())
+		h.coupons.Clear(sess)
+
+		h.renderer.Redirect(w, r, "/cart", inertia.WithFlash(inertia.Flash{
+			"success": "Coupon removed.",
+		}))
+	}
+}
+
+// sessionUserID returns the signed-in user's ID, or "" for a guest.
+func sessionUserID(sess *session.Session) string {
+	if sess == nil {
+		return ""
+	}
+	userID, ok := sess.Get("user_id")
+	if !ok || userID == nil {
+		return ""
+	}
+	return fmt.Sprintf("%v", userID)
+}
+
+// capitalizeFirst renders an error sentence-cased for display without changing
+// the sentinel text the engine defines.
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }
 
 // Add adds an item to the cart.

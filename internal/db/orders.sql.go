@@ -45,9 +45,9 @@ func (q *Queries) CountOrdersByUser(ctx context.Context, userID pgtype.UUID) (in
 }
 
 const createOrder = `-- name: CreateOrder :one
-INSERT INTO orders (user_id, status, total, subtotal, tax, shipping_cost, discount, notes, shipping_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_name, billing_address, billing_city, billing_state, billing_postal_code, billing_country)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-RETURNING id, user_id, status, total, subtotal, tax, shipping_cost, discount, notes, shipping_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_name, billing_address, billing_city, billing_state, billing_postal_code, billing_country, created_at, updated_at
+INSERT INTO orders (user_id, status, total, subtotal, tax, shipping_cost, discount, coupon_code, notes, shipping_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_name, billing_address, billing_city, billing_state, billing_postal_code, billing_country)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+RETURNING id, user_id, status, total, subtotal, tax, shipping_cost, discount, notes, shipping_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_name, billing_address, billing_city, billing_state, billing_postal_code, billing_country, created_at, updated_at, coupon_code
 `
 
 type CreateOrderParams struct {
@@ -58,6 +58,7 @@ type CreateOrderParams struct {
 	Tax                pgtype.Numeric `db:"tax" json:"tax"`
 	ShippingCost       pgtype.Numeric `db:"shipping_cost" json:"shipping_cost"`
 	Discount           pgtype.Numeric `db:"discount" json:"discount"`
+	CouponCode         pgtype.Text    `db:"coupon_code" json:"coupon_code"`
 	Notes              pgtype.Text    `db:"notes" json:"notes"`
 	ShippingName       string         `db:"shipping_name" json:"shipping_name"`
 	ShippingAddress    string         `db:"shipping_address" json:"shipping_address"`
@@ -82,6 +83,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		arg.Tax,
 		arg.ShippingCost,
 		arg.Discount,
+		arg.CouponCode,
 		arg.Notes,
 		arg.ShippingName,
 		arg.ShippingAddress,
@@ -121,12 +123,13 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.BillingCountry,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CouponCode,
 	)
 	return i, err
 }
 
 const getOrderByID = `-- name: GetOrderByID :one
-SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at,
+SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at, o.coupon_code,
     u.name AS customer_name,
     u.email AS customer_email
 FROM orders o
@@ -158,6 +161,7 @@ type GetOrderByIDRow struct {
 	BillingCountry     pgtype.Text        `db:"billing_country" json:"billing_country"`
 	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	CouponCode         pgtype.Text        `db:"coupon_code" json:"coupon_code"`
 	CustomerName       string             `db:"customer_name" json:"customer_name"`
 	CustomerEmail      string             `db:"customer_email" json:"customer_email"`
 }
@@ -189,6 +193,7 @@ func (q *Queries) GetOrderByID(ctx context.Context, id pgtype.UUID) (GetOrderByI
 		&i.BillingCountry,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CouponCode,
 		&i.CustomerName,
 		&i.CustomerEmail,
 	)
@@ -225,7 +230,7 @@ func (q *Queries) GetOrderSummary(ctx context.Context) (GetOrderSummaryRow, erro
 }
 
 const getOrdersByDateRange = `-- name: GetOrdersByDateRange :many
-SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at,
+SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at, o.coupon_code,
     u.name AS customer_name,
     u.email AS customer_email
 FROM orders o
@@ -263,6 +268,7 @@ type GetOrdersByDateRangeRow struct {
 	BillingCountry     pgtype.Text        `db:"billing_country" json:"billing_country"`
 	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	CouponCode         pgtype.Text        `db:"coupon_code" json:"coupon_code"`
 	CustomerName       string             `db:"customer_name" json:"customer_name"`
 	CustomerEmail      string             `db:"customer_email" json:"customer_email"`
 }
@@ -300,6 +306,7 @@ func (q *Queries) GetOrdersByDateRange(ctx context.Context, arg GetOrdersByDateR
 			&i.BillingCountry,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CouponCode,
 			&i.CustomerName,
 			&i.CustomerEmail,
 		); err != nil {
@@ -314,7 +321,7 @@ func (q *Queries) GetOrdersByDateRange(ctx context.Context, arg GetOrdersByDateR
 }
 
 const getRecentOrders = `-- name: GetRecentOrders :many
-SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at,
+SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at, o.coupon_code,
     u.name AS customer_name,
     u.email AS customer_email
 FROM orders o
@@ -347,6 +354,7 @@ type GetRecentOrdersRow struct {
 	BillingCountry     pgtype.Text        `db:"billing_country" json:"billing_country"`
 	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	CouponCode         pgtype.Text        `db:"coupon_code" json:"coupon_code"`
 	CustomerName       string             `db:"customer_name" json:"customer_name"`
 	CustomerEmail      string             `db:"customer_email" json:"customer_email"`
 }
@@ -384,6 +392,7 @@ func (q *Queries) GetRecentOrders(ctx context.Context, limit int32) ([]GetRecent
 			&i.BillingCountry,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CouponCode,
 			&i.CustomerName,
 			&i.CustomerEmail,
 		); err != nil {
@@ -449,7 +458,7 @@ func (q *Queries) GetTotalSales(ctx context.Context) (pgtype.Numeric, error) {
 }
 
 const listAllOrders = `-- name: ListAllOrders :many
-SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at,
+SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at, o.coupon_code,
     u.name AS customer_name,
     u.email AS customer_email
 FROM orders o
@@ -487,6 +496,7 @@ type ListAllOrdersRow struct {
 	BillingCountry     pgtype.Text        `db:"billing_country" json:"billing_country"`
 	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	CouponCode         pgtype.Text        `db:"coupon_code" json:"coupon_code"`
 	CustomerName       string             `db:"customer_name" json:"customer_name"`
 	CustomerEmail      string             `db:"customer_email" json:"customer_email"`
 }
@@ -524,6 +534,7 @@ func (q *Queries) ListAllOrders(ctx context.Context, arg ListAllOrdersParams) ([
 			&i.BillingCountry,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CouponCode,
 			&i.CustomerName,
 			&i.CustomerEmail,
 		); err != nil {
@@ -538,7 +549,7 @@ func (q *Queries) ListAllOrders(ctx context.Context, arg ListAllOrdersParams) ([
 }
 
 const listOrdersByStatus = `-- name: ListOrdersByStatus :many
-SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at,
+SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at, o.coupon_code,
     u.name AS customer_name,
     u.email AS customer_email
 FROM orders o
@@ -578,6 +589,7 @@ type ListOrdersByStatusRow struct {
 	BillingCountry     pgtype.Text        `db:"billing_country" json:"billing_country"`
 	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	CouponCode         pgtype.Text        `db:"coupon_code" json:"coupon_code"`
 	CustomerName       string             `db:"customer_name" json:"customer_name"`
 	CustomerEmail      string             `db:"customer_email" json:"customer_email"`
 }
@@ -615,6 +627,7 @@ func (q *Queries) ListOrdersByStatus(ctx context.Context, arg ListOrdersByStatus
 			&i.BillingCountry,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CouponCode,
 			&i.CustomerName,
 			&i.CustomerEmail,
 		); err != nil {
@@ -629,7 +642,7 @@ func (q *Queries) ListOrdersByStatus(ctx context.Context, arg ListOrdersByStatus
 }
 
 const listOrdersByUser = `-- name: ListOrdersByUser :many
-SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at
+SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at, o.coupon_code
 FROM orders o
 WHERE o.user_id = $1
 ORDER BY o.created_at DESC
@@ -675,6 +688,7 @@ func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserPara
 			&i.BillingCountry,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CouponCode,
 		); err != nil {
 			return nil, err
 		}
@@ -690,7 +704,7 @@ const updateOrder = `-- name: UpdateOrder :one
 UPDATE orders
 SET status = $2, notes = $3, shipping_name = $4, shipping_address = $5, shipping_city = $6, shipping_state = $7, shipping_postal_code = $8, shipping_country = $9
 WHERE id = $1
-RETURNING id, user_id, status, total, subtotal, tax, shipping_cost, discount, notes, shipping_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_name, billing_address, billing_city, billing_state, billing_postal_code, billing_country, created_at, updated_at
+RETURNING id, user_id, status, total, subtotal, tax, shipping_cost, discount, notes, shipping_name, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, billing_name, billing_address, billing_city, billing_state, billing_postal_code, billing_country, created_at, updated_at, coupon_code
 `
 
 type UpdateOrderParams struct {
@@ -742,6 +756,7 @@ func (q *Queries) UpdateOrder(ctx context.Context, arg UpdateOrderParams) (Order
 		&i.BillingCountry,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CouponCode,
 	)
 	return i, err
 }

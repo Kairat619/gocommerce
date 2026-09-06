@@ -112,6 +112,34 @@ type Category struct {
 	MetaKeywords    pgtype.Text        `db:"meta_keywords" json:"meta_keywords"`
 }
 
+type Coupon struct {
+	ID                 pgtype.UUID        `db:"id" json:"id"`
+	Code               string             `db:"code" json:"code"`
+	Description        string             `db:"description" json:"description"`
+	IsActive           bool               `db:"is_active" json:"is_active"`
+	DiscountType       string             `db:"discount_type" json:"discount_type"`
+	DiscountValue      pgtype.Numeric     `db:"discount_value" json:"discount_value"`
+	MaxDiscountAmount  pgtype.Numeric     `db:"max_discount_amount" json:"max_discount_amount"`
+	MinOrderAmount     pgtype.Numeric     `db:"min_order_amount" json:"min_order_amount"`
+	MinOrderQuantity   int32              `db:"min_order_quantity" json:"min_order_quantity"`
+	MaxUses            pgtype.Int4        `db:"max_uses" json:"max_uses"`
+	MaxUsesPerCustomer pgtype.Int4        `db:"max_uses_per_customer" json:"max_uses_per_customer"`
+	UsedCount          int32              `db:"used_count" json:"used_count"`
+	StartsAt           pgtype.Timestamptz `db:"starts_at" json:"starts_at"`
+	EndsAt             pgtype.Timestamptz `db:"ends_at" json:"ends_at"`
+	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type CouponRedemption struct {
+	ID             pgtype.UUID        `db:"id" json:"id"`
+	CouponID       pgtype.UUID        `db:"coupon_id" json:"coupon_id"`
+	UserID         pgtype.UUID        `db:"user_id" json:"user_id"`
+	OrderID        pgtype.UUID        `db:"order_id" json:"order_id"`
+	DiscountAmount pgtype.Numeric     `db:"discount_amount" json:"discount_amount"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type Order struct {
 	ID                 pgtype.UUID        `db:"id" json:"id"`
 	UserID             pgtype.UUID        `db:"user_id" json:"user_id"`
@@ -136,6 +164,7 @@ type Order struct {
 	BillingCountry     pgtype.Text        `db:"billing_country" json:"billing_country"`
 	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	CouponCode         pgtype.Text        `db:"coupon_code" json:"coupon_code"`
 }
 
 type OrderItem struct {

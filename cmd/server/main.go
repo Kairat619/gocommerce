@@ -88,7 +88,8 @@ func main() {
 	authService := service.NewAuthService(queries)
 	cartService := service.NewCartService()
 	settingsService := service.NewSettingsService(queries)
-	orderService := service.NewOrderService(queries, cartService, settingsService)
+	couponService := service.NewCouponService(queries)
+	orderService := service.NewOrderService(queries, cartService, settingsService, couponService)
 
 	// --- Dynamic Shared Props ---
 	shared := &inertiamw.DynamicSharedProps{
@@ -119,10 +120,11 @@ func main() {
 	authHandler := handler.NewAuthHandler(renderer, authService)
 	productHandler := handler.NewProductHandler(renderer, queries)
 	categoryHandler := handler.NewCategoryHandler(renderer, queries)
-	cartHandler := handler.NewCartHandler(renderer, cartService, queries)
-	checkoutHandler := handler.NewCheckoutHandler(renderer, orderService, settingsService)
+	cartHandler := handler.NewCartHandler(renderer, cartService, queries, couponService)
+	checkoutHandler := handler.NewCheckoutHandler(renderer, orderService, settingsService, couponService)
 	accountHandler := handler.NewAccountHandler(renderer, orderService, authService)
 	adminHandler := handler.NewAdminHandler(renderer, queries, pool, settingsService)
+	adminCouponHandler := handler.NewAdminCouponHandler(renderer, queries)
 
 	// --- Media Storage (Cloudflare R2 when configured, local disk otherwise) ---
 	var mediaStore storage.Storage = storage.NewLocal()
@@ -192,6 +194,11 @@ func main() {
 	r.Post("/cart/remove", cartHandler.Remove())
 	r.Post("/cart/clear", cartHandler.Clear())
 
+	// Coupons. Public like the rest of the cart: a coupon carrying a
+	// per-customer limit is refused to guests by the engine, not by the route.
+	r.Post("/cart/coupon", cartHandler.ApplyCoupon())
+	r.Post("/cart/coupon/remove", cartHandler.RemoveCoupon())
+
 	// --- Protected Routes ---
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth)
@@ -243,6 +250,14 @@ func main() {
 		// Customers
 		r.Get("/admin/customers", adminHandler.ListCustomers())
 		r.Get("/admin/customers/{id}", adminHandler.ShowCustomer())
+
+		// Coupons
+		r.Get("/admin/coupons", adminCouponHandler.List())
+		r.Get("/admin/coupons/create", adminCouponHandler.Create())
+		r.Post("/admin/coupons", adminCouponHandler.Store())
+		r.Get("/admin/coupons/{id}/edit", adminCouponHandler.Edit())
+		r.Post("/admin/coupons/{id}", adminCouponHandler.Update())
+		r.Post("/admin/coupons/{id}/delete", adminCouponHandler.Delete())
 
 		// Settings
 		r.Get("/admin/settings", adminHandler.ShowSettings())

@@ -46,14 +46,61 @@ type OrderResult struct {
 	Total   float64
 }
 
+// Totals is the checkout arithmetic in one place. CreateOrder charges these
+// numbers and the checkout page displays them, so the two cannot disagree.
+type Totals struct {
+	Subtotal float64 `json:"subtotal"`
+	Discount float64 `json:"discount"`
+	Tax      float64 `json:"tax"`
+	Shipping float64 `json:"shipping"`
+	Total    float64 `json:"total"`
+}
+
+// ComputeTotals applies the discount to the subtotal first, then charges tax on
+// what the customer actually pays for goods, then shipping. A free-shipping
+// coupon zeroes the shipping line; the free-shipping threshold is measured
+// against the discounted subtotal.
+//
+// With no coupon, discount is 0 and freeShipping is false, which reproduces the
+// arithmetic this function replaced exactly.
+func ComputeTotals(settings StoreSettings, subtotal, discount float64, freeShipping bool) Totals {
+	if discount > subtotal {
+		discount = subtotal
+	}
+	if discount < 0 {
+		discount = 0
+	}
+
+	discounted := subtotal - discount
+	tax := discounted * settings.TaxRate
+
+	shipping := settings.ShippingCost
+	if freeShipping || discounted >= settings.FreeShippingThreshold {
+		shipping = 0
+	}
+
+	return Totals{
+		Subtotal: round2(subtotal),
+		Discount: round2(discount),
+		Tax:      round2(tax),
+		Shipping: round2(shipping),
+		Total:    round2(discounted + tax + shipping),
+	}
+}
+
+func round2(f float64) float64 {
+	return math.Round(f*100) / 100
+}
+
 type OrderService struct {
 	queries  *db.Queries
 	cart     *CartService
 	settings *SettingsService
+	coupons  *CouponService
 }
 
-func NewOrderService(queries *db.Queries, cart *CartService, settings *SettingsService) *OrderService {
-	return &OrderService{queries: queries, cart: cart, settings: settings}
+func NewOrderService(queries *db.Queries, cart *CartService, settings *SettingsService, coupons *CouponService) *OrderService {
+	return &OrderService{queries: queries, cart: cart, settings: settings, coupons: coupons}
 }
 
 func (s *OrderService) GetCart(sess *session.Session) *Cart {
@@ -103,24 +150,33 @@ func (s *OrderService) CreateOrder(ctx context.Context, sess *session.Session, i
 
 	settings := s.settings.Get(ctx)
 
-	subtotal := cart.TotalPrice
-	tax := subtotal * settings.TaxRate
-	shipping := settings.ShippingCost
-	if subtotal >= settings.FreeShippingThreshold {
-		shipping = 0
+	// Re-evaluated here rather than trusted from the session or the client, so
+	// the amount charged is the amount the coupon is worth at this instant.
+	userIDStr := fmt.Sprintf("%x", userUUID.Bytes)
+	applied := s.coupons.ForSession(ctx, sess, cart, userIDStr)
+
+	discount := 0.0
+	freeShipping := false
+	couponCode := pgtype.Text{Valid: false}
+	if applied != nil {
+		discount = applied.DiscountAmount
+		freeShipping = applied.FreeShipping
+		couponCode = pgtype.Text{String: applied.Code, Valid: true}
 	}
-	total := subtotal + tax + shipping
+
+	totals := ComputeTotals(settings, cart.TotalPrice, discount, freeShipping)
 
 	notes := pgtype.Text{String: input.Notes, Valid: input.Notes != ""}
 
 	order, err := s.queries.CreateOrder(ctx, db.CreateOrderParams{
 		UserID:             userUUID,
 		Status:             db.OrderStatusPending,
-		Total:              floatToNumeric(total),
-		Subtotal:           floatToNumeric(subtotal),
-		Tax:                floatToNumeric(tax),
-		ShippingCost:       floatToNumeric(shipping),
-		Discount:           floatToNumeric(0),
+		Total:              floatToNumeric(totals.Total),
+		Subtotal:           floatToNumeric(totals.Subtotal),
+		Tax:                floatToNumeric(totals.Tax),
+		ShippingCost:       floatToNumeric(totals.Shipping),
+		Discount:           floatToNumeric(totals.Discount),
+		CouponCode:         couponCode,
 		Notes:              notes,
 		ShippingName:       input.ShippingName,
 		ShippingAddress:    input.ShippingAddress,
@@ -177,12 +233,21 @@ func (s *OrderService) CreateOrder(ctx context.Context, sess *session.Session, i
 		}
 	}
 
-	s.cart.Clear(sess)
-
 	orderID := fmt.Sprintf("%x", order.ID.Bytes)
+
+	// Booked only once the order exists, so an abandoned checkout never burns a
+	// redemption. A failure here must not undo a placed order, so it is logged
+	// by the caller's error path rather than returned.
+	if applied != nil {
+		_ = s.coupons.RecordRedemption(ctx, applied.CouponID, userIDStr, orderID, totals.Discount)
+	}
+
+	s.cart.Clear(sess)
+	s.coupons.Clear(sess)
+
 	return &OrderResult{
 		OrderID: orderID,
-		Total:   total,
+		Total:   totals.Total,
 	}, nil
 }
 
