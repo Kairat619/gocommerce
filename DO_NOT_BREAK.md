@@ -23,6 +23,24 @@ Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`API_CONTRACT.md`](API_CON
   placeholder when it has none (`lib/image.categoryImage`)
 - Category descriptions render as HTML on `/categories/{slug}`; the tiles on
   `/categories` show a plain-text excerpt of the same value
+- Collection navigation — `/collections`, `/collections/{slug}`
+- Collections are a **merchandising layer, not a second category system**: every
+  product keeps its single `products.category_id`, and nothing about
+  `/categories` changed when collections arrived
+- Collection product order — the storefront lists a collection's products in the
+  merchant's curated order (`collection_products.position`, then name), *not*
+  alphabetically; `ProductGrid` renders them as given and must not re-sort
+- A disabled collection 404s at `/collections/{slug}` rather than rendering empty
+- Featured collections sort ahead of the rest on `/collections`
+- Deleting a collection never deletes products — only the membership rows go
+- Deleting a product drops it from its collections rather than being refused
+  (`collection_products.product_id` is `ON DELETE CASCADE`, unlike
+  `products.category_id` which stays `ON DELETE RESTRICT`)
+- The admin collection product picker paginates server-side via an Inertia
+  partial reload; the full catalogue is never loaded into the browser
+- The storefront nav "Collections" points at `/collections` and "Shop by
+  Category" at `/categories` — both work, and no existing `/categories` URL
+  changed
 - Product detail — `/products/{slug}`, including an unknown slug rendering the
   404 page with HTTP 404 (not a redirect, not a 500)
 - Product image gallery — primary `image_url` plus `product_images` rows

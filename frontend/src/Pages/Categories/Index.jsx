@@ -11,16 +11,16 @@ export default function CategoriesIndex({ categories }) {
 
   return (
     <StoreLayout>
-      <Head title={pageTitle("Collections")} />
+      <Head title={pageTitle("Categories")} />
 
       <div className="mb-12">
         <span className="mb-3 block text-label-lg font-semibold uppercase tracking-[0.2em] text-accent">
           Curated Categories
         </span>
-        <h1 className="text-display-lg text-ink">Browse Collections</h1>
+        <h1 className="text-display-lg text-ink">Shop by Category</h1>
         <p className="mt-3 max-w-xl text-body-md text-muted-foreground">
-          Explore our thoughtfully curated collections, each hand-selected for
-          modern living.
+          Browse the full catalogue by category, or explore our curated
+          collections for a hand-picked edit.
         </p>
       </div>
 

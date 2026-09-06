@@ -248,6 +248,24 @@ Unknown slug → `Pages/Errors/404`, HTTP 404.
 | `products` | `product[]` (category form — no `compare_at_price`/`sku`/`is_featured`) |
 | `pagination` | `{current, total}` |
 
+### `GET /collections` → `Pages/Collections/Index`
+
+| Prop | Shape |
+|---|---|
+| `collections` | `{id, name, slug, description, image_url, is_featured, product_count}[]` — active only, `sort_order` then name |
+
+### `GET /collections/{slug}` → `Pages/Collections/Show`
+
+Unknown slug **or a disabled collection** → `Pages/Errors/404`, HTTP 404. A
+disabled collection is unreachable rather than empty, so an unpublished page
+never becomes a thin-content URL.
+
+| Prop | Shape |
+|---|---|
+| `collection` | `{id, name, slug, description, image_url, meta_title, meta_description}` |
+| `products` | `product[]` (same form as the category page) in **curated order** — `collection_products.position`, then name. The grid must render them as given. |
+| `pagination` | `{current, total}` |
+
 ### `Pages/Errors/404`
 
 Rendered with `inertia.Props{}` — no props at all.
@@ -552,6 +570,74 @@ via `inertia.WithValidationErrors`.
 category still has products (`products.category_id` is `ON DELETE RESTRICT`);
 subcategories survive as top-level categories (`parent_id` is `ON DELETE SET
 NULL`) and the success flash says so.
+
+### Collections
+
+A collection is a **curated merchandising group** (`collections` +
+`collection_products`), not a second category system. Products keep their single
+`products.category_id`; collection membership is many-to-many, hand-ordered, and
+manual only — there is no rules engine, so the form offers no rule builder.
+
+| Route | Page | Props |
+|---|---|---|
+| `GET /admin/collections` | `Admin/Collections/Index` | `collections[]` = `{id, name, slug, description, image_url, is_active, is_featured, sort_order, product_count}` |
+| `GET /admin/collections/create` | `Admin/Collections/Create` | `product_search` |
+| `GET /admin/collections/{id}/edit` | `Admin/Collections/Edit` | `collection`, `products[]`, `product_search` |
+
+`collection` on the edit page:
+
+```jsonc
+{ "id": "…hex…", "name": "…", "slug": "…", "description": "…HTML…",
+  "image_url": "…", "is_active": true, "is_featured": false, "sort_order": 0,
+  "meta_title": "…", "meta_description": "…", "meta_keywords": "…",
+  "product_count": 3 }
+```
+
+`products[]` is the membership **in curated order**:
+`{id, name, slug, sku, price, image_url, is_active, stock_quantity, category_name}`.
+Inactive products are included so the merchant can see and fix them.
+
+`product_search` backs the product picker. It is an ordinary page prop refreshed
+by an **Inertia partial reload** (`only: ["product_search"]`, `data: {q, pp}`) —
+not a REST endpoint — so one page of results crosses the wire at a time and the
+catalogue is never loaded into the browser:
+
+```jsonc
+{ "items": [ /* same product shape as above */ ], "total": 42,
+  "page": 1, "per_page": 8, "last_page": 6, "keyword": "mug" }
+```
+
+`?q=` searches name and SKU; `?pp=` is the picker page, clamped back to the last
+page when a search shrinks the result set.
+
+`POST /admin/collections` and `POST /admin/collections/{id}` take a **JSON body**:
+
+```jsonc
+{ "name": "…", "url_key": "…", "description": "…HTML…", "image_url": "…",
+  "is_active": true, "is_featured": false, "sort_order": "0",
+  "meta_title": "…", "meta_description": "…", "meta_keywords": "…",
+  "product_ids": ["…hex…", "…hex…"],
+  "redirect_to": "index|edit" }
+```
+
+`product_ids` **array order is the stored position** — index 0 shows first on
+the storefront — so there is no separate ordering field to fall out of sync.
+Duplicates are collapsed keeping first position. The collection and its
+membership are written in **one transaction**, and membership is replaced
+wholesale rather than diffed.
+
+`url_key` behaves exactly like the category form's: the existing slug is posted
+back unchanged on edit, so **a rename never moves the public URL**.
+
+Validation errors come back per field (`name`, `url_key`, `sort_order`,
+`image_url`, `meta_title`, `meta_description`, `meta_keywords`, `product_ids`).
+Name and slug are both unique across all collections; `product_ids` is refused
+whole if any id is malformed or names a product that no longer exists.
+
+`POST /admin/collections/{id}/delete` → redirect. Never refused: only the
+membership rows go (`ON DELETE CASCADE`), and the flash says the products stay
+in the catalogue. Deleting a *product* likewise drops it from its collections
+rather than blocking the delete.
 
 ### Orders
 
