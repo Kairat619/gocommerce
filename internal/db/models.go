@@ -190,6 +190,18 @@ type Order struct {
 	CouponCode         pgtype.Text        `db:"coupon_code" json:"coupon_code"`
 }
 
+type OrderActivity struct {
+	ID         pgtype.UUID        `db:"id" json:"id"`
+	OrderID    pgtype.UUID        `db:"order_id" json:"order_id"`
+	UserID     pgtype.UUID        `db:"user_id" json:"user_id"`
+	ActorName  string             `db:"actor_name" json:"actor_name"`
+	Kind       string             `db:"kind" json:"kind"`
+	Message    string             `db:"message" json:"message"`
+	FromStatus NullOrderStatus    `db:"from_status" json:"from_status"`
+	ToStatus   NullOrderStatus    `db:"to_status" json:"to_status"`
+	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type OrderItem struct {
 	ID          pgtype.UUID        `db:"id" json:"id"`
 	OrderID     pgtype.UUID        `db:"order_id" json:"order_id"`

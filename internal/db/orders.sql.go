@@ -22,6 +22,74 @@ func (q *Queries) CountAllOrders(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countFilterOrders = `-- name: CountFilterOrders :one
+SELECT COUNT(*)
+FROM orders o
+JOIN users u ON u.id = o.user_id
+WHERE ($1::order_status IS NULL OR o.status = $1::order_status)
+  AND ($2::text IS NULL
+       OR u.name ILIKE '%' || $2::text || '%'
+       OR u.email ILIKE '%' || $2::text || '%'
+       OR o.shipping_name ILIKE '%' || $2::text || '%'
+       OR o.coupon_code ILIKE '%' || $2::text || '%'
+       OR replace(o.id::text, '-', '') ILIKE $2::text || '%')
+  AND ($3::timestamptz IS NULL OR o.created_at >= $3::timestamptz)
+  AND ($4::timestamptz IS NULL OR o.created_at < $4::timestamptz)
+`
+
+type CountFilterOrdersParams struct {
+	Status NullOrderStatus    `db:"status" json:"status"`
+	Search pgtype.Text        `db:"search" json:"search"`
+	From   pgtype.Timestamptz `db:"from" json:"from"`
+	To     pgtype.Timestamptz `db:"to" json:"to"`
+}
+
+// Must mirror FilterOrders' WHERE clause exactly or the pagination lies.
+func (q *Queries) CountFilterOrders(ctx context.Context, arg CountFilterOrdersParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countFilterOrders,
+		arg.Status,
+		arg.Search,
+		arg.From,
+		arg.To,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countOrdersByEachStatus = `-- name: CountOrdersByEachStatus :many
+SELECT status, COUNT(*)::bigint AS count
+FROM orders
+GROUP BY status
+`
+
+type CountOrdersByEachStatusRow struct {
+	Status OrderStatus `db:"status" json:"status"`
+	Count  int64       `db:"count" json:"count"`
+}
+
+// Powers the counts on the status tabs. One grouped query rather than one
+// COUNT per tab.
+func (q *Queries) CountOrdersByEachStatus(ctx context.Context) ([]CountOrdersByEachStatusRow, error) {
+	rows, err := q.db.Query(ctx, countOrdersByEachStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountOrdersByEachStatusRow{}
+	for rows.Next() {
+		var i CountOrdersByEachStatusRow
+		if err := rows.Scan(&i.Status, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countOrdersByStatus = `-- name: CountOrdersByStatus :one
 SELECT COUNT(*) FROM orders WHERE status = $1
 `
@@ -125,6 +193,206 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.UpdatedAt,
 		&i.CouponCode,
 	)
+	return i, err
+}
+
+const createOrderActivity = `-- name: CreateOrderActivity :one
+INSERT INTO order_activity (order_id, user_id, actor_name, kind, message, from_status, to_status)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, order_id, user_id, actor_name, kind, message, from_status, to_status, created_at
+`
+
+type CreateOrderActivityParams struct {
+	OrderID    pgtype.UUID     `db:"order_id" json:"order_id"`
+	UserID     pgtype.UUID     `db:"user_id" json:"user_id"`
+	ActorName  string          `db:"actor_name" json:"actor_name"`
+	Kind       string          `db:"kind" json:"kind"`
+	Message    string          `db:"message" json:"message"`
+	FromStatus NullOrderStatus `db:"from_status" json:"from_status"`
+	ToStatus   NullOrderStatus `db:"to_status" json:"to_status"`
+}
+
+func (q *Queries) CreateOrderActivity(ctx context.Context, arg CreateOrderActivityParams) (OrderActivity, error) {
+	row := q.db.QueryRow(ctx, createOrderActivity,
+		arg.OrderID,
+		arg.UserID,
+		arg.ActorName,
+		arg.Kind,
+		arg.Message,
+		arg.FromStatus,
+		arg.ToStatus,
+	)
+	var i OrderActivity
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.UserID,
+		&i.ActorName,
+		&i.Kind,
+		&i.Message,
+		&i.FromStatus,
+		&i.ToStatus,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const filterOrders = `-- name: FilterOrders :many
+
+SELECT o.id, o.user_id, o.status, o.total, o.subtotal, o.tax, o.shipping_cost, o.discount, o.notes, o.shipping_name, o.shipping_address, o.shipping_city, o.shipping_state, o.shipping_postal_code, o.shipping_country, o.billing_name, o.billing_address, o.billing_city, o.billing_state, o.billing_postal_code, o.billing_country, o.created_at, o.updated_at, o.coupon_code,
+    u.name AS customer_name,
+    u.email AS customer_email,
+    (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id)::bigint AS item_count
+FROM orders o
+JOIN users u ON u.id = o.user_id
+WHERE ($3::order_status IS NULL OR o.status = $3::order_status)
+  AND ($4::text IS NULL
+       OR u.name ILIKE '%' || $4::text || '%'
+       OR u.email ILIKE '%' || $4::text || '%'
+       OR o.shipping_name ILIKE '%' || $4::text || '%'
+       OR o.coupon_code ILIKE '%' || $4::text || '%'
+       -- Order ids are shown to staff as a short hex prefix, so the same prefix
+       -- is what they paste back into the search box.
+       OR replace(o.id::text, '-', '') ILIKE $4::text || '%')
+  AND ($5::timestamptz IS NULL OR o.created_at >= $5::timestamptz)
+  AND ($6::timestamptz IS NULL OR o.created_at < $6::timestamptz)
+ORDER BY
+    CASE WHEN $7::text = 'oldest' THEN o.created_at END ASC,
+    CASE WHEN $7::text = 'total_desc' THEN o.total END DESC,
+    CASE WHEN $7::text = 'total_asc' THEN o.total END ASC,
+    CASE WHEN $7::text = 'customer' THEN u.name END ASC,
+    o.created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type FilterOrdersParams struct {
+	Limit  int32              `db:"limit" json:"limit"`
+	Offset int32              `db:"offset" json:"offset"`
+	Status NullOrderStatus    `db:"status" json:"status"`
+	Search pgtype.Text        `db:"search" json:"search"`
+	From   pgtype.Timestamptz `db:"from" json:"from"`
+	To     pgtype.Timestamptz `db:"to" json:"to"`
+	Sort   pgtype.Text        `db:"sort" json:"sort"`
+}
+
+type FilterOrdersRow struct {
+	ID                 pgtype.UUID        `db:"id" json:"id"`
+	UserID             pgtype.UUID        `db:"user_id" json:"user_id"`
+	Status             OrderStatus        `db:"status" json:"status"`
+	Total              pgtype.Numeric     `db:"total" json:"total"`
+	Subtotal           pgtype.Numeric     `db:"subtotal" json:"subtotal"`
+	Tax                pgtype.Numeric     `db:"tax" json:"tax"`
+	ShippingCost       pgtype.Numeric     `db:"shipping_cost" json:"shipping_cost"`
+	Discount           pgtype.Numeric     `db:"discount" json:"discount"`
+	Notes              pgtype.Text        `db:"notes" json:"notes"`
+	ShippingName       string             `db:"shipping_name" json:"shipping_name"`
+	ShippingAddress    string             `db:"shipping_address" json:"shipping_address"`
+	ShippingCity       string             `db:"shipping_city" json:"shipping_city"`
+	ShippingState      pgtype.Text        `db:"shipping_state" json:"shipping_state"`
+	ShippingPostalCode string             `db:"shipping_postal_code" json:"shipping_postal_code"`
+	ShippingCountry    string             `db:"shipping_country" json:"shipping_country"`
+	BillingName        pgtype.Text        `db:"billing_name" json:"billing_name"`
+	BillingAddress     pgtype.Text        `db:"billing_address" json:"billing_address"`
+	BillingCity        pgtype.Text        `db:"billing_city" json:"billing_city"`
+	BillingState       pgtype.Text        `db:"billing_state" json:"billing_state"`
+	BillingPostalCode  pgtype.Text        `db:"billing_postal_code" json:"billing_postal_code"`
+	BillingCountry     pgtype.Text        `db:"billing_country" json:"billing_country"`
+	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	CouponCode         pgtype.Text        `db:"coupon_code" json:"coupon_code"`
+	CustomerName       string             `db:"customer_name" json:"customer_name"`
+	CustomerEmail      string             `db:"customer_email" json:"customer_email"`
+	ItemCount          int64              `db:"item_count" json:"item_count"`
+}
+
+// ---------------------------------------------------------------------------
+// Admin order management
+//
+// The queries above still serve checkout, the account pages and the dashboard.
+// Everything below backs the admin Orders screens.
+// ---------------------------------------------------------------------------
+// One query for the whole orders list: search, status, date range and sort.
+// Every filter is optional and NULL means "not applied", so the admin never
+// needs a second code path per combination.
+//
+// Sorting is expressed as CASE arms rather than string interpolation, so the
+// sort key can never carry SQL. created_at DESC is the final tiebreaker and the
+// default.
+func (q *Queries) FilterOrders(ctx context.Context, arg FilterOrdersParams) ([]FilterOrdersRow, error) {
+	rows, err := q.db.Query(ctx, filterOrders,
+		arg.Limit,
+		arg.Offset,
+		arg.Status,
+		arg.Search,
+		arg.From,
+		arg.To,
+		arg.Sort,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FilterOrdersRow{}
+	for rows.Next() {
+		var i FilterOrdersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Status,
+			&i.Total,
+			&i.Subtotal,
+			&i.Tax,
+			&i.ShippingCost,
+			&i.Discount,
+			&i.Notes,
+			&i.ShippingName,
+			&i.ShippingAddress,
+			&i.ShippingCity,
+			&i.ShippingState,
+			&i.ShippingPostalCode,
+			&i.ShippingCountry,
+			&i.BillingName,
+			&i.BillingAddress,
+			&i.BillingCity,
+			&i.BillingState,
+			&i.BillingPostalCode,
+			&i.BillingCountry,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CouponCode,
+			&i.CustomerName,
+			&i.CustomerEmail,
+			&i.ItemCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCustomerOrderStats = `-- name: GetCustomerOrderStats :one
+SELECT COUNT(*)::bigint AS order_count,
+       COALESCE(SUM(total) FILTER (WHERE status <> 'cancelled'), 0)::numeric AS lifetime_value
+FROM orders
+WHERE user_id = $1
+`
+
+type GetCustomerOrderStatsRow struct {
+	OrderCount    int64          `db:"order_count" json:"order_count"`
+	LifetimeValue pgtype.Numeric `db:"lifetime_value" json:"lifetime_value"`
+}
+
+// The customer card on the order detail page: how much this customer has spent
+// with the store, and over how many orders. Cancelled orders are excluded from
+// the value since they were never collected.
+func (q *Queries) GetCustomerOrderStats(ctx context.Context, userID pgtype.UUID) (GetCustomerOrderStatsRow, error) {
+	row := q.db.QueryRow(ctx, getCustomerOrderStats, userID)
+	var i GetCustomerOrderStatsRow
+	err := row.Scan(&i.OrderCount, &i.LifetimeValue)
 	return i, err
 }
 
@@ -537,6 +805,46 @@ func (q *Queries) ListAllOrders(ctx context.Context, arg ListAllOrdersParams) ([
 			&i.CouponCode,
 			&i.CustomerName,
 			&i.CustomerEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOrderActivity = `-- name: ListOrderActivity :many
+
+SELECT id, order_id, user_id, actor_name, kind, message, from_status, to_status, created_at FROM order_activity
+WHERE order_id = $1
+ORDER BY created_at ASC, id ASC
+`
+
+// ---------------------------------------------------------------------------
+// Activity log
+// ---------------------------------------------------------------------------
+func (q *Queries) ListOrderActivity(ctx context.Context, orderID pgtype.UUID) ([]OrderActivity, error) {
+	rows, err := q.db.Query(ctx, listOrderActivity, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OrderActivity{}
+	for rows.Next() {
+		var i OrderActivity
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.UserID,
+			&i.ActorName,
+			&i.Kind,
+			&i.Message,
+			&i.FromStatus,
+			&i.ToStatus,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

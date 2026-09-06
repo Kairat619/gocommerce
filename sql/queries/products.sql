@@ -196,3 +196,9 @@ WHERE sku = $1 AND (sqlc.narg('exclude_id')::uuid IS NULL OR id <> sqlc.narg('ex
 SELECT DISTINCT brand FROM products
 WHERE brand IS NOT NULL AND brand <> ''
 ORDER BY brand ASC;
+
+-- name: RestoreProductStock :exec
+-- Returns quantity to a product when an order is cancelled. Additive rather
+-- than a computed SET, so two concurrent cancellations cannot lose one another's
+-- restock.
+UPDATE products SET stock_quantity = stock_quantity + $2 WHERE id = $1;

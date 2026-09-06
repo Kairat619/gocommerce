@@ -242,3 +242,71 @@ func (q *Queries) GetTopSellingProducts(ctx context.Context, limit int32) ([]Get
 	}
 	return items, nil
 }
+
+const listOrderItemsForAdmin = `-- name: ListOrderItemsForAdmin :many
+SELECT oi.id, oi.order_id, oi.product_id, oi.variant_id, oi.product_name, oi.variant_name, oi.quantity, oi.unit_price, oi.total, oi.created_at,
+       p.slug AS product_slug,
+       p.sku AS product_sku,
+       p.image_url AS product_image_url
+FROM order_items oi
+LEFT JOIN products p ON p.id = oi.product_id
+WHERE oi.order_id = $1
+ORDER BY oi.created_at ASC, oi.id ASC
+`
+
+type ListOrderItemsForAdminRow struct {
+	ID              pgtype.UUID        `db:"id" json:"id"`
+	OrderID         pgtype.UUID        `db:"order_id" json:"order_id"`
+	ProductID       pgtype.UUID        `db:"product_id" json:"product_id"`
+	VariantID       pgtype.UUID        `db:"variant_id" json:"variant_id"`
+	ProductName     string             `db:"product_name" json:"product_name"`
+	VariantName     pgtype.Text        `db:"variant_name" json:"variant_name"`
+	Quantity        int32              `db:"quantity" json:"quantity"`
+	UnitPrice       pgtype.Numeric     `db:"unit_price" json:"unit_price"`
+	Total           pgtype.Numeric     `db:"total" json:"total"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	ProductSlug     pgtype.Text        `db:"product_slug" json:"product_slug"`
+	ProductSku      pgtype.Text        `db:"product_sku" json:"product_sku"`
+	ProductImageUrl pgtype.Text        `db:"product_image_url" json:"product_image_url"`
+}
+
+// The admin order detail line items.
+//
+// product_name and unit_price come from order_items, never from products: they
+// are the historical record of what was sold and at what price, and must not
+// follow a later rename or repricing. The join to products is only for
+// presentation extras the order never captured — the thumbnail and the current
+// SKU — and is LEFT so a line survives even if sqlc's RESTRICT is ever relaxed.
+func (q *Queries) ListOrderItemsForAdmin(ctx context.Context, orderID pgtype.UUID) ([]ListOrderItemsForAdminRow, error) {
+	rows, err := q.db.Query(ctx, listOrderItemsForAdmin, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOrderItemsForAdminRow{}
+	for rows.Next() {
+		var i ListOrderItemsForAdminRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.ProductID,
+			&i.VariantID,
+			&i.ProductName,
+			&i.VariantName,
+			&i.Quantity,
+			&i.UnitPrice,
+			&i.Total,
+			&i.CreatedAt,
+			&i.ProductSlug,
+			&i.ProductSku,
+			&i.ProductImageUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

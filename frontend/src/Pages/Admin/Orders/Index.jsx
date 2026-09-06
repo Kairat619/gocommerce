@@ -1,71 +1,65 @@
-import { Head, Link } from "@inertiajs/react";
+import { Head } from "@inertiajs/react";
+
 import AdminLayout from "../../../Layouts/AdminLayout";
-import OrderStatus from "../../../Components/Commerce/OrderStatus";
-import { shortOrderId } from "../../../lib/order";
+import OrderFilters from "../../../Components/Admin/Orders/OrderFilters";
+import OrdersTable from "../../../Components/Admin/Orders/OrdersTable";
 import Pagination from "../../../Components/Pagination";
 
-const statuses = ["", "pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
+export default function AdminOrdersIndex({
+  orders = [],
+  filters = {},
+  status_counts = {},
+  page_sizes = [],
+  filters_active = false,
+  pagination = {},
+  currency = "USD",
+}) {
+  const paginationParams = {};
+  if (filters.q) paginationParams.q = filters.q;
+  if (filters.status) paginationParams.status = filters.status;
+  if (filters.range) paginationParams.range = filters.range;
+  if (filters.sort && filters.sort !== "newest") paginationParams.sort = filters.sort;
+  if (filters.limit && filters.limit !== 20) paginationParams.limit = String(filters.limit);
 
-/** @param {import('../../../types/pages').AdminOrdersIndexProps} props */
-export default function AdminOrdersIndex({ orders, status, pagination }) {
   return (
     <AdminLayout title="Orders">
-      <Head title="Admin Orders" />
+      <Head title="Orders" />
 
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">All Orders</h2>
-        <div className="flex gap-2">
-          {statuses.map((s) => (
-            <Link
-              key={s}
-              href={s ? `/admin/orders?status=${s}` : "/admin/orders"}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium ${status === s || (!status && !s) ? "bg-indigo-600 text-white" : "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"}`}
-            >
-              {s || "All"}
-            </Link>
-          ))}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">Orders</h2>
+        <p className="mt-0.5 text-sm text-gray-500">
+          Every order placed in the store, newest first.
+        </p>
+      </div>
+
+      <OrderFilters
+        filters={filters}
+        statusCounts={status_counts}
+        pageSizes={page_sizes}
+        active={filters_active}
+        total={pagination.count ?? 0}
+      />
+
+      {orders.length === 0 ? (
+        <div className="rounded-xl bg-white px-6 py-16 text-center shadow-sm ring-1 ring-gray-200">
+          <p className="text-sm font-medium text-gray-700">
+            {filters_active ? "No orders match these filters" : "No orders yet"}
+          </p>
+          <p className="mx-auto mt-1 max-w-md text-sm text-gray-500">
+            {filters_active
+              ? "Try a broader date range, a different status, or clear the filters."
+              : "Orders placed in the storefront will appear here."}
+          </p>
         </div>
-      </div>
-
-      <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {orders.map((order) => (
-              <tr key={order.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-mono text-xs text-gray-500">{shortOrderId(order.id)}</td>
-                <td className="px-6 py-4">
-                  <p className="text-sm font-medium text-gray-900">{order.customer_name}</p>
-                  <p className="text-xs text-gray-500">{order.customer_email}</p>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">{order.created_at}</td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">${order.total}</td>
-                <td className="px-6 py-4">
-                  <OrderStatus status={order.status} size="sm" />
-                </td>
-                <td className="px-6 py-4 text-right text-sm">
-                  <Link href={`/admin/orders/${order.id}`} className="font-medium text-indigo-600 hover:text-indigo-500">
-                    View
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-6">
-        <Pagination pagination={pagination} searchParams={status ? { status } : {}} />
-      </div>
+      ) : (
+        <>
+          <OrdersTable orders={orders} currency={currency} />
+          {/* Pagination rebuilds the query string from scratch, so the active
+              filters have to be handed to it or page 2 of a filtered list
+              silently shows page 2 of everything. */}
+          <Pagination pagination={pagination} searchParams={paginationParams} />
+        </>
+      )}
     </AdminLayout>
   );
 }
