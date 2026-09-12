@@ -129,6 +129,7 @@ func main() {
 	adminCollectionHandler := handler.NewAdminCollectionHandler(renderer, queries, pool)
 	adminAttributeHandler := handler.NewAdminAttributeHandler(renderer, queries, pool)
 	adminOrderHandler := handler.NewAdminOrderHandler(renderer, queries, pool)
+	adminDashboardHandler := handler.NewAdminDashboardHandler(renderer, queries)
 
 	// --- Media Storage (Cloudflare R2 when configured, local disk otherwise) ---
 	var mediaStore storage.Storage = storage.NewLocal()
@@ -228,7 +229,10 @@ func main() {
 	// --- Admin Routes ---
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAdmin)
-		r.Get("/admin", adminHandler.Dashboard())
+		// The dashboard lives in admin_dashboard.go, like orders in
+		// admin_orders.go: it is the only screen that aggregates the whole
+		// store, and that is one operational concern of its own.
+		r.Get("/admin", adminDashboardHandler.Show())
 
 		// Products
 		r.Get("/admin/products", adminHandler.ListProducts())

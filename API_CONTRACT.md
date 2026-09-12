@@ -418,13 +418,54 @@ All behind `RequireAdmin`. 20 rows per page unless noted.
 
 ### `GET /admin` → `Pages/Admin/Dashboard`
 
+Query: `?range=today|yesterday|7d|30d|month|last_month|year|custom`
+(default `30d`), plus `?from=YYYY-MM-DD&to=YYYY-MM-DD` when `range=custom`.
+
+The `today`, `yesterday`, `7d` and `30d` keys resolve through the **same**
+`dateRanges` map the orders list uses, so the two screens mean the same window.
+
+**Sections are independent.** The handler runs them concurrently and each may
+fail on its own. A failed section sends **no prop at all** and names itself in
+`section_errors`, so on this page `undefined` means *the query failed* and an
+empty array means *there is nothing*. They must not be conflated.
+
 | Prop | Shape |
 |---|---|
-| `summary` | `{total_orders, total_revenue, average_order, unique_customers}` |
-| `product_count` | int |
-| `customer_count` | int |
-| `recent_orders` | `{id, customer_name, customer_email, total, status, created_at}[]` |
-| `top_products` | `{name, total_sold, total_revenue}[]` |
+| `period` | `{range, label, from, to, comparison_label, in_progress, bucket, custom_from, custom_to, ranges[]}` — always present |
+| `kpis` | `{revenue, orders, average_order_value, new_customers, items_sold, buyers, discount_total}`, each `{value, previous, change}` |
+| `sales_series` | `{bucket_at, label, revenue, orders}[]` — one entry per bucket, zeros included |
+| `order_status` | `{total, breakdown: {status, count}[]}` — every status, including zeros |
+| `backlog` | `{pending, awaiting_fulfilment, in_transit, stalled, stalled_after_days, orders[]}` — **not** period-scoped |
+| `recent_orders` | `{id, status, total, customer_name, customer_email, coupon_code, created_at}[]` |
+| `top_products` | `{id, name, slug, sku, image_url, units_sold, revenue, order_count}[]` |
+| `top_categories` | `{id, name, slug, units_sold, revenue, order_count}[]` |
+| `customers` | `{new_buyers, returning_buyers, top[]}` |
+| `inventory` | `{out_of_stock, low_stock, tracked_products, alerts[]}` — **not** period-scoped |
+| `promotions` | `{redemptions, discount_total, orders, revenue, live_coupons, top[]}` |
+| `activity` | `{id, order_id, kind, message, actor_name, customer_name, from_status, to_status, created_at}[]` |
+| `catalog` | `{products, customers, categories, collections}` |
+| `currency` | `"USD"` — const `storeCurrency` |
+| `section_errors` | `{section: message}`, `{}` when everything succeeded |
+
+`change` is a percentage **or `null`** when the comparison period's value was
+zero. There is no percentage change from nothing, and the UI must render that
+as "no prior data" rather than as growth.
+
+**Metric definitions.** Revenue is `SUM(orders.total) WHERE status <> 'cancelled'`
+— the same rule as `GetOrderSummary`, `GetTotalSales` and the customer
+lifetime-value card. `orders`, `average_order_value`, `items_sold` and every
+product, category, customer and coupon aggregate carry that same filter, so one
+order contributes consistently to all of them. `order_status` deliberately does
+*not* filter, because counting cancellations is its purpose.
+
+Comparison windows are always **length-matched to the elapsed part** of the
+current period: "This month" on the 8th compares against the 1st–8th of last
+month, not the whole of it.
+
+**Deliberately absent**, because the data does not support them: profit and
+margin (`order_items` never captured cost at sale time), payment and refund
+metrics (no such columns), guest-order metrics (`orders.user_id` is NOT NULL),
+and collection performance (nothing records a collection view).
 
 ### Products
 
