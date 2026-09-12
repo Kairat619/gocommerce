@@ -509,3 +509,34 @@ FROM orders o;
 CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_users_role_created ON users(role, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_order_activity_created ON order_activity(created_at DESC);
+
+-- -------------------------------------------
+-- Store configuration + settings audit (010)
+-- -------------------------------------------
+ALTER TABLE store_settings
+    ADD COLUMN IF NOT EXISTS store_name VARCHAR(255) NOT NULL DEFAULT 'ShopNest',
+    ADD COLUMN IF NOT EXISTS store_description TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS store_email VARCHAR(255) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS store_phone VARCHAR(50) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS currency CHAR(3) NOT NULL DEFAULT 'USD'
+        CHECK (currency ~ '^[A-Z]{3}$'),
+    ADD COLUMN IF NOT EXISTS products_per_page INTEGER NOT NULL DEFAULT 12
+        CHECK (products_per_page BETWEEN 1 AND 60),
+    ADD COLUMN IF NOT EXISTS default_product_active BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN IF NOT EXISTS default_track_inventory BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN IF NOT EXISTS default_allow_backorders BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN IF NOT EXISTS default_low_stock_threshold INTEGER NOT NULL DEFAULT 0
+        CHECK (default_low_stock_threshold >= 0);
+
+CREATE TABLE IF NOT EXISTS settings_activity (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    actor_name VARCHAR(255) NOT NULL,
+    setting_key VARCHAR(100) NOT NULL,
+    previous_value TEXT NOT NULL,
+    new_value TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_settings_activity_created ON settings_activity(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_settings_activity_key ON settings_activity(setting_key, created_at DESC);

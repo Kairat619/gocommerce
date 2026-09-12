@@ -12,7 +12,21 @@ import (
 	inertia "github.com/mayahiro/go-inertia"
 
 	"gocommerce/internal/db"
+	"gocommerce/internal/service"
 )
+
+// catalogPerPage is the storefront catalogue page size.
+//
+// It was the productsPerPage constant, read by the product list, the category
+// page and the collection page alike — so it stays one helper the three of them
+// share rather than three copies that can drift.
+//
+// The old constant survives as the fallback inside
+// service.DefaultStoreSettings, so an unreachable database still paginates at
+// twelve rather than at zero.
+func catalogPerPage(r *http.Request, settings *service.SettingsService) int {
+	return settings.Get(r.Context()).ProductsPerPage
+}
 
 func floatToNumeric(f float64) pgtype.Numeric {
 	cents := int64(math.Round(f * 100))
@@ -23,21 +37,21 @@ func floatToNumeric(f float64) pgtype.Numeric {
 	}
 }
 
-const productsPerPage = 12
-
 type ProductHandler struct {
 	renderer *inertia.Renderer
 	queries  *db.Queries
+	settings *service.SettingsService
 }
 
-func NewProductHandler(renderer *inertia.Renderer, queries *db.Queries) *ProductHandler {
-	return &ProductHandler{renderer: renderer, queries: queries}
+func NewProductHandler(renderer *inertia.Renderer, queries *db.Queries, settings *service.SettingsService) *ProductHandler {
+	return &ProductHandler{renderer: renderer, queries: queries, settings: settings}
 }
 
 func (h *ProductHandler) Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		page := getPageParam(r)
-		offset := int32((page - 1) * productsPerPage)
+		perPage := catalogPerPage(r, h.settings)
+		offset := int32((page - 1) * perPage)
 
 		search := r.URL.Query().Get("q")
 		categorySlug := r.URL.Query().Get("category")
@@ -67,7 +81,7 @@ func (h *ProductHandler) Index() http.HandlerFunc {
 		}
 
 		results, err := h.queries.FilterProducts(r.Context(), db.FilterProductsParams{
-			Limit:    int32(productsPerPage),
+			Limit:    int32(perPage),
 			Offset:   offset,
 			Search:   pgSearch,
 			Category: pgCategory,
@@ -98,7 +112,7 @@ func (h *ProductHandler) Index() http.HandlerFunc {
 			"categories": serializeCategoriesWithCount(categories),
 			"pagination": map[string]any{
 				"current": page,
-				"total":   totalPages(total, productsPerPage),
+				"total":   totalPages(total, perPage),
 			},
 			"search":    search,
 			"category":  categorySlug,

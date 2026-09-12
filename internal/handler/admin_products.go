@@ -24,7 +24,6 @@ const (
 	maxMetaTitleLength        = 255
 	maxMetaKeywordsLength     = 500
 	maxSlugLength             = 255
-	storeCurrency             = "USD"
 )
 
 type productImageInput struct {
@@ -726,12 +725,35 @@ func (h *AdminHandler) productFormProps(ctx context.Context) inertia.Props {
 		}
 	}
 
+	// One read of the configuration for both values below: currency and tax
+	// rate must describe the same moment, and the service caches the row
+	// anyway.
+	settings := h.settings.Get(ctx)
+
 	return inertia.Props{
 		"categories": serializedCategories,
 		"attributes": serializedAttributes,
 		"brands":     brands,
-		"currency":   storeCurrency,
-		"tax_rate":   h.settings.Get(ctx).TaxRate,
+		"currency":   settings.Currency,
+		"tax_rate":   settings.TaxRate,
+
+		// What a NEW product starts as, from the catalogue settings.
+		//
+		// The create form previously hardcoded these in productFormState.js,
+		// alongside a second copy as column defaults in the schema — so the form
+		// and the database each had an opinion about what a new product looks
+		// like. The form now asks.
+		//
+		// These seed the create form only. An existing product carries its own
+		// values in its own columns and is never revisited when this changes:
+		// a settings save that silently re-flagged the catalogue as untracked
+		// would be data loss wearing a checkbox.
+		"product_defaults": map[string]any{
+			"is_active":           settings.DefaultProductActive,
+			"track_inventory":     settings.DefaultTrackInventory,
+			"allow_backorders":    settings.DefaultAllowBackorders,
+			"low_stock_threshold": settings.DefaultLowStockThreshold,
+		},
 	}
 }
 

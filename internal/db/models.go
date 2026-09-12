@@ -285,13 +285,33 @@ type ProductVariant struct {
 	SortOrder     int32              `db:"sort_order" json:"sort_order"`
 }
 
+type SettingsActivity struct {
+	ID            pgtype.UUID        `db:"id" json:"id"`
+	UserID        pgtype.UUID        `db:"user_id" json:"user_id"`
+	ActorName     string             `db:"actor_name" json:"actor_name"`
+	SettingKey    string             `db:"setting_key" json:"setting_key"`
+	PreviousValue string             `db:"previous_value" json:"previous_value"`
+	NewValue      string             `db:"new_value" json:"new_value"`
+	CreatedAt     pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type StoreSetting struct {
-	ID                    int32              `db:"id" json:"id"`
-	TaxRate               pgtype.Numeric     `db:"tax_rate" json:"tax_rate"`
-	ShippingCost          pgtype.Numeric     `db:"shipping_cost" json:"shipping_cost"`
-	FreeShippingThreshold pgtype.Numeric     `db:"free_shipping_threshold" json:"free_shipping_threshold"`
-	CreatedAt             pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt             pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID                       int32              `db:"id" json:"id"`
+	TaxRate                  pgtype.Numeric     `db:"tax_rate" json:"tax_rate"`
+	ShippingCost             pgtype.Numeric     `db:"shipping_cost" json:"shipping_cost"`
+	FreeShippingThreshold    pgtype.Numeric     `db:"free_shipping_threshold" json:"free_shipping_threshold"`
+	CreatedAt                pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt                pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	StoreName                string             `db:"store_name" json:"store_name"`
+	StoreDescription         string             `db:"store_description" json:"store_description"`
+	StoreEmail               string             `db:"store_email" json:"store_email"`
+	StorePhone               string             `db:"store_phone" json:"store_phone"`
+	Currency                 string             `db:"currency" json:"currency"`
+	ProductsPerPage          int32              `db:"products_per_page" json:"products_per_page"`
+	DefaultProductActive     bool               `db:"default_product_active" json:"default_product_active"`
+	DefaultTrackInventory    bool               `db:"default_track_inventory" json:"default_track_inventory"`
+	DefaultAllowBackorders   bool               `db:"default_allow_backorders" json:"default_allow_backorders"`
+	DefaultLowStockThreshold int32              `db:"default_low_stock_threshold" json:"default_low_stock_threshold"`
 }
 
 type User struct {

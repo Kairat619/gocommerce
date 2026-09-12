@@ -13,6 +13,7 @@ import (
 	inertia "github.com/mayahiro/go-inertia"
 
 	"gocommerce/internal/db"
+	"gocommerce/internal/service"
 )
 
 // ---------------------------------------------------------------------------
@@ -58,10 +59,11 @@ const (
 type AdminDashboardHandler struct {
 	renderer *inertia.Renderer
 	queries  *db.Queries
+	settings *service.SettingsService
 }
 
-func NewAdminDashboardHandler(renderer *inertia.Renderer, queries *db.Queries) *AdminDashboardHandler {
-	return &AdminDashboardHandler{renderer: renderer, queries: queries}
+func NewAdminDashboardHandler(renderer *inertia.Renderer, queries *db.Queries, settings *service.SettingsService) *AdminDashboardHandler {
+	return &AdminDashboardHandler{renderer: renderer, queries: queries, settings: settings}
 }
 
 // ---------------------------------------------------------------------------
@@ -803,7 +805,7 @@ func (h *AdminDashboardHandler) Show() http.HandlerFunc {
 			"custom_to":        period.CustomTo,
 			"ranges":           dashboardRangeOptions(),
 		}
-		props["currency"] = storeCurrency
+		props["currency"] = h.settings.Get(ctx).Currency
 		props["section_errors"] = s.errs
 
 		h.renderer.Render(w, r, "Pages/Admin/Dashboard", props)

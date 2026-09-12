@@ -1,4 +1,4 @@
-import { BRAND_NAME } from "../../../lib/brand";
+import { BRAND } from "../../../lib/brand";
 
 /**
  * The default storefront theme.
@@ -109,7 +109,13 @@ export default {
     {
       section: "EditorialBand",
       props: {
-        eyebrow: `The ${BRAND_NAME} Promise`,
+        // A getter, not a template literal: this object is built when the
+        // module is imported, which happens before main.jsx applies the
+        // configured store name. Reading it lazily — when the props are spread
+        // at render — is what lets the copy follow Settings -> General.
+        get eyebrow() {
+          return `The ${BRAND.name} Promise`;
+        },
         title: "Ready to upgrade your lifestyle?",
         description:
           "Join thousands of satisfied customers and discover products that make a difference.",

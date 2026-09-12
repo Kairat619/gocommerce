@@ -8,15 +8,17 @@ import (
 	inertia "github.com/mayahiro/go-inertia"
 
 	"gocommerce/internal/db"
+	"gocommerce/internal/service"
 )
 
 type CategoryHandler struct {
 	renderer *inertia.Renderer
 	queries  *db.Queries
+	settings *service.SettingsService
 }
 
-func NewCategoryHandler(renderer *inertia.Renderer, queries *db.Queries) *CategoryHandler {
-	return &CategoryHandler{renderer: renderer, queries: queries}
+func NewCategoryHandler(renderer *inertia.Renderer, queries *db.Queries, settings *service.SettingsService) *CategoryHandler {
+	return &CategoryHandler{renderer: renderer, queries: queries, settings: settings}
 }
 
 func (h *CategoryHandler) Index() http.HandlerFunc {
@@ -44,11 +46,12 @@ func (h *CategoryHandler) Show() http.HandlerFunc {
 		}
 
 		page := getPageParam(r)
-		offset := int32((page - 1) * productsPerPage)
+		perPage := catalogPerPage(r, h.settings)
+		offset := int32((page - 1) * perPage)
 
 		products, err := h.queries.ListProductsByCategory(r.Context(), db.ListProductsByCategoryParams{
 			Slug:   slug,
-			Limit:  int32(productsPerPage),
+			Limit:  int32(perPage),
 			Offset: offset,
 		})
 		if err != nil {
@@ -75,7 +78,7 @@ func (h *CategoryHandler) Show() http.HandlerFunc {
 			"products": serializeCategoryProducts(products),
 			"pagination": map[string]any{
 				"current": page,
-				"total":   totalPages(total, productsPerPage),
+				"total":   totalPages(total, perPage),
 			},
 		})
 	}

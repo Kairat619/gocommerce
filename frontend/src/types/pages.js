@@ -371,13 +371,90 @@
  */
 
 /**
- * `Pages/Admin/Settings/Index`
+ * `Pages/Admin/Settings/Index` — GET /admin/settings
+ *
+ * @typedef {Object} AdminSettingsIndexProps
+ * @property {SettingsSection[]} sections
+ * @property {SettingsActivityEntry[]} activity store-wide, newest first
+ * @property {{name: string, currency: string}} store
+ */
+
+/**
+ * `Pages/Admin/Settings/Section` — GET /admin/settings/{section}
+ *
+ * Every section receives the WHOLE configuration in `settings`; it edits only
+ * its own fields and the server keeps the rest. `system` and `localization`
+ * carry extra props nobody else does.
+ *
+ * @typedef {Object} AdminSettingsSectionProps
+ * @property {SettingsSection[]} sections
+ * @property {SettingsSection} section the one being shown
+ * @property {StoreSettings} settings
+ * @property {SettingsActivityEntry[]} activity this section's fields only
+ * @property {SystemStatus} [system] `system` section only
+ * @property {{code: string, label: string}[]} [currencies] `localization` only
+ * @property {{name: string, abbrev: string, offset: string, now: string}} [timezone] `localization` only
+ */
+
+/**
+ * @typedef {Object} SettingsSection
+ * @property {string} key general|localization|catalog|checkout|system
+ * @property {string} label
+ * @property {string} description
+ * @property {string} icon
+ * @property {boolean} editable false for `system`, which has no form
+ * @property {string[]} keywords search synonyms
+ */
+
+/**
+ * The whole store configuration.
  *
  * `tax_rate_percent` is a PERCENTAGE (8.25), unlike the `tax_rate` fraction
- * sent to checkout and the product form.
+ * sent to checkout and the product form. Never conflate them.
  *
- * @typedef {Object} AdminSettingsProps
- * @property {{tax_rate_percent: number, shipping_cost: number, free_shipping_threshold: number}} settings
+ * @typedef {Object} StoreSettings
+ * @property {number} tax_rate_percent
+ * @property {number} shipping_cost
+ * @property {number} free_shipping_threshold
+ * @property {string} store_name
+ * @property {string} store_description
+ * @property {string} store_email display only — there is no mail delivery
+ * @property {string} store_phone display only
+ * @property {string} currency ISO 4217, the one source of truth
+ * @property {number} products_per_page
+ * @property {boolean} default_product_active new products only
+ * @property {boolean} default_track_inventory new products only
+ * @property {boolean} default_allow_backorders new products only
+ * @property {number} default_low_stock_threshold new products only
+ */
+
+/**
+ * One audited configuration change. Only database-backed settings appear here —
+ * no environment value has a code path that could produce one.
+ *
+ * @typedef {Object} SettingsActivityEntry
+ * @property {string} id
+ * @property {string} actor_name "" when it could not be attributed
+ * @property {string} setting_key
+ * @property {string} previous_value rendered; "" means it was blank
+ * @property {string} new_value
+ * @property {string} created_at RFC3339
+ */
+
+/**
+ * Deployment status. STATUS ONLY — never a credential, masked or otherwise.
+ *
+ * @typedef {Object} SystemStatus
+ * @property {string} environment
+ * @property {string} app_url
+ * @property {string} database_host DSN host, credentials stripped
+ * @property {"configured"|"warning"} session_state
+ * @property {string} session_detail
+ * @property {"configured"|"not_configured"} storage_state
+ * @property {string} storage_detail
+ * @property {string} storage_public
+ * @property {number} max_upload_mb
+ * @property {number} login_rate_limit
  */
 
 export {};

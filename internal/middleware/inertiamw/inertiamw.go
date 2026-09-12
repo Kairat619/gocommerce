@@ -15,11 +15,34 @@ type DynamicSharedProps struct {
 	Store      *session.Store
 	FlashStore inertia.FlashStore
 	Cart       *service.CartService
+	Settings   *service.SettingsService
 }
 
 func (d *DynamicSharedProps) Props(req *http.Request) (inertia.Props, error) {
 	props := inertia.Props{
 		"appName": d.AppName,
+	}
+
+	// The store's identity and display currency, on every page.
+	//
+	// Both were previously constants in the bundle — BRAND_NAME in lib/brand.js
+	// and DEFAULT_CURRENCY in lib/money.js — which meant the storefront's brand
+	// and the admin's currency could each disagree with the server's idea of
+	// them, and one of them did: the storefront rendered "ShopNest" while this
+	// very middleware sent an appName of "GoCommerce" that nothing consumed.
+	//
+	// Sending it as a shared prop is what makes the settings page authoritative
+	// rather than decorative. appName is left in place: it is the deployment's
+	// own name, not the shop's, and removing a prop is a contract change.
+	if d.Settings != nil {
+		settings := d.Settings.Get(req.Context())
+		props["store"] = map[string]any{
+			"name":        settings.StoreName,
+			"description": settings.StoreDescription,
+			"email":       settings.StoreEmail,
+			"phone":       settings.StorePhone,
+			"currency":    settings.Currency,
+		}
 	}
 
 	sess := session.FromContext(req.Context())

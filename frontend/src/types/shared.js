@@ -39,11 +39,30 @@
  * reach for it as `auth?.user`.
  *
  * @typedef {Object} SharedProps
- * @property {string} appName             "GoCommerce"; unused by the UI today
+ * @property {string} appName             the DEPLOYMENT's name ("GoCommerce"); unused by the UI
+ * @property {StoreIdentity} [store]      the SHOP's name and currency, from Settings
  * @property {Auth} [auth]                absent when logged out
  * @property {import('./commerce').Cart} [cart]
  * @property {Flash} [flash]
  * @property {ValidationErrors} [errors]
+ */
+
+/**
+ * The store's configured identity, on every page.
+ *
+ * `main.jsx` applies `name` and `currency` to `lib/brand.js` and `lib/money.js`
+ * before the first render, so `BRAND_NAME` and a bare `formatMoney(amount)`
+ * follow the settings without their call sites reading this directly.
+ *
+ * Read it directly only when a component needs a value those two do not carry —
+ * the contact details, say.
+ *
+ * @typedef {Object} StoreIdentity
+ * @property {string} name
+ * @property {string} description
+ * @property {string} email       display only; there is no mail delivery
+ * @property {string} phone       display only
+ * @property {string} currency    ISO 4217
  */
 
 export {};

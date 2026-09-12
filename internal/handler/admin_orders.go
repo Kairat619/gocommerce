@@ -15,6 +15,7 @@ import (
 
 	"gocommerce/internal/db"
 	"gocommerce/internal/middleware"
+	"gocommerce/internal/service"
 	"gocommerce/internal/session"
 )
 
@@ -78,10 +79,11 @@ type AdminOrderHandler struct {
 	renderer *inertia.Renderer
 	queries  *db.Queries
 	pool     *pgxpool.Pool
+	settings *service.SettingsService
 }
 
-func NewAdminOrderHandler(renderer *inertia.Renderer, queries *db.Queries, pool *pgxpool.Pool) *AdminOrderHandler {
-	return &AdminOrderHandler{renderer: renderer, queries: queries, pool: pool}
+func NewAdminOrderHandler(renderer *inertia.Renderer, queries *db.Queries, pool *pgxpool.Pool, settings *service.SettingsService) *AdminOrderHandler {
+	return &AdminOrderHandler{renderer: renderer, queries: queries, pool: pool, settings: settings}
 }
 
 // ---------------------------------------------------------------------------
@@ -247,7 +249,7 @@ func (h *AdminOrderHandler) List() http.HandlerFunc {
 		h.renderer.Render(w, r, "Pages/Admin/Orders/Index", inertia.Props{
 			"orders":         serialized,
 			"status_counts":  counts,
-			"currency":       storeCurrency,
+			"currency":       h.settings.Get(r.Context()).Currency,
 			"page_sizes":     orderPageSizes,
 			"filters_active": filters.active(),
 			"filters": map[string]any{
@@ -336,7 +338,7 @@ func (h *AdminOrderHandler) Show() http.HandlerFunc {
 			"items":          serializedItems,
 			"activity":       serializedActivity,
 			"next_statuses":  nextStatuses,
-			"currency":       storeCurrency,
+			"currency":       h.settings.Get(r.Context()).Currency,
 			"restores_stock": order.Status != db.OrderStatusCancelled,
 			"customer": map[string]any{
 				"id":             fmt.Sprintf("%x", order.UserID.Bytes),

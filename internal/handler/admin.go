@@ -3,7 +3,6 @@ package handler
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -184,69 +183,9 @@ func (h *AdminHandler) ShowCustomer() http.HandlerFunc {
 	}
 }
 
-func (h *AdminHandler) ShowSettings() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		settings := h.settings.Get(r.Context())
-
-		h.renderer.Render(w, r, "Pages/Admin/Settings/Index", inertia.Props{
-			"settings": map[string]any{
-				"tax_rate_percent":        settings.TaxRate * 100,
-				"shipping_cost":           settings.ShippingCost,
-				"free_shipping_threshold": settings.FreeShippingThreshold,
-			},
-		})
-	}
-}
-
-func (h *AdminHandler) UpdateSettings() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		fields, err := parseInput(r)
-		if err != nil {
-			h.renderer.Redirect(w, r, "/admin/settings", inertia.WithFlash(inertia.Flash{
-				"error": "Invalid request.",
-			}))
-			return
-		}
-
-		errs := inertia.ValidationErrors{}
-
-		taxPercent, err := strconv.ParseFloat(strings.TrimSpace(fields["tax_rate_percent"]), 64)
-		if err != nil || taxPercent < 0 || taxPercent > 100 {
-			errs["tax_rate_percent"] = "Tax rate must be a number between 0 and 100."
-		}
-
-		shippingCost, err := strconv.ParseFloat(strings.TrimSpace(fields["shipping_cost"]), 64)
-		if err != nil || shippingCost < 0 {
-			errs["shipping_cost"] = "Shipping fee must be a non-negative number."
-		}
-
-		freeThreshold, err := strconv.ParseFloat(strings.TrimSpace(fields["free_shipping_threshold"]), 64)
-		if err != nil || freeThreshold < 0 {
-			errs["free_shipping_threshold"] = "Free shipping threshold must be a non-negative number."
-		}
-
-		if len(errs) > 0 {
-			h.renderer.Redirect(w, r, "/admin/settings", inertia.WithValidationErrors(errs))
-			return
-		}
-
-		_, err = h.settings.Update(r.Context(), service.StoreSettings{
-			TaxRate:               taxPercent / 100,
-			ShippingCost:          shippingCost,
-			FreeShippingThreshold: freeThreshold,
-		})
-		if err != nil {
-			h.renderer.Redirect(w, r, "/admin/settings", inertia.WithFlash(inertia.Flash{
-				"error": "Failed to save settings: " + err.Error(),
-			}))
-			return
-		}
-
-		h.renderer.Redirect(w, r, "/admin/settings", inertia.WithFlash(inertia.Flash{
-			"success": "Store settings updated.",
-		}))
-	}
-}
+// Settings moved to admin_settings.go when it became the configuration centre:
+// five sections, each saving on its own, plus an audit trail. What lived here
+// was one form over three columns.
 
 func slugify(s string) string {
 	s = strings.ToLower(s)
