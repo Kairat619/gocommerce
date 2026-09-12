@@ -132,7 +132,33 @@ Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`API_CONTRACT.md`](API_CON
 
 ## Admin
 
-- Admin dashboard summary, recent orders, top products
+- **Admin dashboard metric definitions.** Revenue everywhere on the dashboard is
+  `SUM(orders.total) WHERE status <> 'cancelled'` — the same rule as
+  `GetOrderSummary`, `GetTotalSales` and the customer lifetime-value card. The
+  order count and average order value carry that identical filter, so
+  AOV = revenue ÷ orders holds. `CountOrdersByStatusInRange` is the one query
+  that must NOT filter: counting cancellations is its purpose
+- **Product, category and coupon revenue is line revenue** (`order_items.total`,
+  goods only) and will always total less than the revenue KPI (`orders.total`,
+  including tax and shipping). That gap is correct and each card labels its
+  basis. Do not "fix" it by apportioning shipping across lines
+- **Dashboard period comparisons are length-matched to the elapsed part** of the
+  current window. "This month" on the 8th compares against the 1st–8th of the
+  previous month, never the whole of it. A `change` of `null` means the previous
+  value was zero and must render as "no prior data", never as +100%
+- **`today` / `yesterday` / `7d` / `30d` resolve through the same `dateRanges`
+  map the orders list uses.** The dashboard must not define its own copy, or the
+  two screens silently start meaning different days
+- **The backlog and inventory sections ignore the date filter on purpose.** An
+  order stalled since last month is exactly what a 7-day window would hide
+- **Dashboard sections fail independently.** Each runs concurrently and records
+  its own error; a failed section sends no prop and names itself in
+  `section_errors`. An absent prop means *the query failed*, an empty array means
+  *there is nothing*, and the UI must never render zero for the first case
+- The dashboard shows **no profit, margin, payment, refund, guest-order or
+  collection-performance figure**, because the schema records none of them.
+  Adding one means adding the data first
+- Admin dashboard recent orders and top products
 - Product list, create, edit, delete
 - **The product form workflow in `frontend/src/Components/Admin/**` is frozen.**
   Media uploader, category picker, attribute picker, variant matrix, rich-text

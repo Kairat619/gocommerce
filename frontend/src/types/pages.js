@@ -126,14 +126,108 @@
  * ---------------------------------------------------------------------- */
 
 /**
- * `Pages/Admin/Dashboard` — GET /admin
+ * `Pages/Admin/Dashboard` — GET /admin?range=&from=&to=
+ *
+ * Every section is optional: the handler runs them concurrently and a section
+ * whose query failed sends nothing and names itself in `section_errors`, so
+ * `undefined` means "failed", not "empty". An empty list means empty.
+ *
+ * Money values are pre-formatted strings ("1234.50"), counts are numbers, and
+ * `change` is a percentage or `null` when the comparison period was zero —
+ * there is no percentage change from nothing.
  *
  * @typedef {Object} AdminDashboardProps
- * @property {{total_orders: number, total_revenue: string, average_order: string, unique_customers: number}} summary
- * @property {number} product_count
- * @property {number} customer_count
- * @property {AdminOrderRow[]} recent_orders
- * @property {{name: string, total_sold: number, total_revenue: string}[]} top_products
+ * @property {DashboardPeriod} period the resolved window, always present
+ * @property {Object.<string, DashboardMetric>} [kpis] revenue, orders, average_order_value, new_customers, items_sold, buyers, discount_total
+ * @property {{bucket_at: string, label: string, revenue: string, orders: number}[]} [sales_series]
+ * @property {{total: number, breakdown: {status: import('./commerce').OrderStatus, count: number}[]}} [order_status]
+ * @property {{pending: number, awaiting_fulfilment: number, in_transit: number, stalled: number, stalled_after_days: number, orders: DashboardAttentionOrder[]}} [backlog]
+ * @property {{id: string, status: import('./commerce').OrderStatus, total: string, customer_name: string, customer_email: string, coupon_code: string, created_at: string}[]} [recent_orders]
+ * @property {{id: string, name: string, slug: string, sku: string, image_url: string, units_sold: number, revenue: string, order_count: number}[]} [top_products]
+ * @property {{id: string, name: string, slug: string, units_sold: number, revenue: string, order_count: number}[]} [top_categories]
+ * @property {{new_buyers: number, returning_buyers: number, top: {id: string, name: string, email: string, order_count: number, revenue: string}[]}} [customers]
+ * @property {{out_of_stock: number, low_stock: number, tracked_products: number, alerts: DashboardStockAlert[]}} [inventory]
+ * @property {{redemptions: number, discount_total: string, orders: number, revenue: string, live_coupons: number, top: DashboardCoupon[]}} [promotions]
+ * @property {DashboardActivity[]} [activity]
+ * @property {{products: number, customers: number, categories: number, collections: number}} [catalog]
+ * @property {string} currency const storeCurrency
+ * @property {Object.<string, string>} section_errors section name -> error, empty when all succeeded
+ */
+
+/**
+ * @typedef {Object} DashboardPeriod
+ * @property {string} range today|yesterday|7d|30d|month|last_month|year|custom
+ * @property {string} label
+ * @property {string} from RFC3339, inclusive
+ * @property {string} to RFC3339, exclusive; clamped to now for an in-progress period
+ * @property {string} comparison_label what the deltas are measured against
+ * @property {boolean} in_progress the period has not finished
+ * @property {"hour"|"day"|"week"|"month"} bucket the chart's granularity
+ * @property {string} custom_from YYYY-MM-DD, "" unless range is custom
+ * @property {string} custom_to YYYY-MM-DD, "" unless range is custom
+ * @property {{value: string, label: string}[]} ranges the presets offered
+ */
+
+/**
+ * One KPI and its comparison. `change` is null when the previous value was
+ * zero.
+ *
+ * @typedef {Object} DashboardMetric
+ * @property {string|number} value
+ * @property {string|number} previous
+ * @property {number|null} change percent
+ */
+
+/**
+ * @typedef {Object} DashboardAttentionOrder
+ * @property {string} id
+ * @property {import('./commerce').OrderStatus} status
+ * @property {string} total
+ * @property {string} customer_name
+ * @property {string} customer_email
+ * @property {number} item_count
+ * @property {string} created_at RFC3339
+ * @property {number} age_days
+ * @property {boolean} stalled open for longer than stalled_after_days
+ */
+
+/**
+ * @typedef {Object} DashboardStockAlert
+ * @property {string} id
+ * @property {string} name
+ * @property {string} slug
+ * @property {string} sku
+ * @property {string} image_url
+ * @property {string} category_name
+ * @property {number} stock_quantity
+ * @property {number} low_stock_threshold
+ * @property {boolean} allow_backorders
+ */
+
+/**
+ * @typedef {Object} DashboardCoupon
+ * @property {string} id
+ * @property {string} code
+ * @property {string} description
+ * @property {string} discount_type
+ * @property {string} discount_value
+ * @property {boolean} is_active
+ * @property {number} redemptions
+ * @property {string} discount_total
+ * @property {string} revenue
+ */
+
+/**
+ * @typedef {Object} DashboardActivity
+ * @property {string} id
+ * @property {string} order_id
+ * @property {string} kind created|status_changed|note|stock_restored
+ * @property {string} message composed when the event happened, never recomposed
+ * @property {string} actor_name "" for customer or system events
+ * @property {string} customer_name
+ * @property {string} from_status "" unless a status change
+ * @property {string} to_status "" unless a status change
+ * @property {string} created_at RFC3339
  */
 
 /**

@@ -502,3 +502,10 @@ CREATE INDEX idx_order_activity_order ON order_activity(order_id, created_at DES
 INSERT INTO order_activity (order_id, user_id, actor_name, kind, message, created_at)
 SELECT o.id, NULL, '', 'created', 'Order placed.', o.created_at
 FROM orders o;
+
+-- -------------------------------------------
+-- Dashboard analytics indexes (009)
+-- -------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_users_role_created ON users(role, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_order_activity_created ON order_activity(created_at DESC);

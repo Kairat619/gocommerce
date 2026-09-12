@@ -25,49 +25,10 @@ func NewAdminHandler(renderer *inertia.Renderer, queries *db.Queries, pool *pgxp
 	return &AdminHandler{renderer: renderer, queries: queries, pool: pool, settings: settings}
 }
 
-func (h *AdminHandler) Dashboard() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		summary, _ := h.queries.GetOrderSummary(r.Context())
-		productCount, _ := h.queries.CountAllProducts(r.Context())
-		customerCount, _ := h.queries.CountCustomers(r.Context())
-		recentOrders, _ := h.queries.GetRecentOrders(r.Context(), 5)
-		topProducts, _ := h.queries.GetTopSellingProducts(r.Context(), 5)
-
-		serializedOrders := make([]map[string]any, len(recentOrders))
-		for i, o := range recentOrders {
-			serializedOrders[i] = map[string]any{
-				"id":             fmt.Sprintf("%x", o.ID.Bytes),
-				"customer_name":  o.CustomerName,
-				"customer_email": o.CustomerEmail,
-				"total":          formatNumeric(o.Total),
-				"status":         string(o.Status),
-				"created_at":     o.CreatedAt.Time.Format("Jan 2, 2006"),
-			}
-		}
-
-		serializedTop := make([]map[string]any, len(topProducts))
-		for i, p := range topProducts {
-			serializedTop[i] = map[string]any{
-				"name":          p.Name,
-				"total_sold":    p.TotalSold,
-				"total_revenue": formatNumeric(p.TotalRevenue),
-			}
-		}
-
-		h.renderer.Render(w, r, "Pages/Admin/Dashboard", inertia.Props{
-			"summary": map[string]any{
-				"total_orders":     summary.TotalOrders,
-				"total_revenue":    formatNumeric(summary.TotalRevenue),
-				"average_order":    formatNumeric(summary.AverageOrderValue),
-				"unique_customers": summary.UniqueCustomers,
-			},
-			"product_count":  productCount,
-			"customer_count": customerCount,
-			"recent_orders":  serializedOrders,
-			"top_products":   serializedTop,
-		})
-	}
-}
+// The dashboard moved to admin_dashboard.go when it grew a date range, period
+// comparisons, a sales chart and nine more sections — the same split orders
+// took in admin_orders.go. What lived here summed four all-time numbers and
+// swallowed every error into a zero.
 
 func (h *AdminHandler) ListProducts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
