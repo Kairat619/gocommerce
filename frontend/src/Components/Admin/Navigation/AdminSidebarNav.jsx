@@ -40,7 +40,12 @@ export default function AdminSidebarNav({ onNavigate, can }) {
   const navigation = useMemo(() => filterNavigation(ADMIN_NAVIGATION, can), [can]);
   const active = useMemo(() => resolveActive(navigation, url), [navigation, url]);
 
-  const [openSection, setOpenSection] = useState(() => active?.sectionId ?? null);
+  // Initialised to the same value the effect would settle on, so the first
+  // paint is already correct — a group that opens and then closes itself on
+  // mount is a flicker, not a transition.
+  const [openSection, setOpenSection] = useState(() =>
+    active?.itemId ? active.sectionId : null
+  );
 
   // Re-assert the route's section whenever the route changes.
   //
@@ -48,8 +53,12 @@ export default function AdminSidebarNav({ onNavigate, can }) {
   // pages of the same section does not fight a user who has opened a different
   // one to browse. A route with no owning section leaves the accordion alone.
   useEffect(() => {
-    if (active?.sectionId) setOpenSection(active.sectionId);
-  }, [active?.sectionId]);
+    if (!active) return;
+    // A leaf section has nothing to expand, so landing on one closes whatever
+    // was open — on the Dashboard the whole tree is collapsed, which is the
+    // honest answer to "which group am I in": none.
+    setOpenSection(active.itemId ? active.sectionId : null);
+  }, [active?.sectionId, active?.itemId]);
 
   function toggle(sectionId) {
     // One open at a time: opening a section is simply replacing the open one.
@@ -65,6 +74,7 @@ export default function AdminSidebarNav({ onNavigate, can }) {
             section={section}
             url={url}
             isOpen={openSection === section.id}
+            isActiveLeaf={!section.children && active?.sectionId === section.id}
             activeItemId={active?.sectionId === section.id ? active.itemId : null}
             onToggle={() => toggle(section.id)}
             onNavigate={onNavigate}

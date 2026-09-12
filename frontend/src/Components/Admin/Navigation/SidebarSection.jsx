@@ -1,10 +1,19 @@
+import { Link } from "@inertiajs/react";
 import { useId } from "react";
 
 import { isShortcutActive } from "../../../Layouts/adminNavigation";
 import SidebarItem from "./SidebarItem";
 
 /**
- * One L1 section: a header that expands, and the L2 items beneath it.
+ * One L1 section.
+ *
+ * TWO SHAPES, ONE ROW HEIGHT.
+ *
+ * A GROUP has children and renders as a header that expands. A LEAF has an href
+ * and renders as a plain link — the Dashboard is one: it is a destination, not
+ * a drawer, and giving it a chevron that expands nothing would be a control
+ * that lies. Both render at the same height and alignment so the top level
+ * still reads as one list rather than two kinds of thing.
  *
  * THE HEADER IS A BUTTON, NOT A LINK.
  *
@@ -29,11 +38,46 @@ export default function SidebarSection({
   section,
   url,
   isOpen,
+  isActiveLeaf,
   activeItemId,
   onToggle,
   onNavigate,
 }) {
   const panelId = `${useId()}-${section.id}`;
+
+  // The shared geometry, so a leaf link and a group header sit on the same
+  // grid. Divergence here is what makes a mixed list look accidental.
+  const rowClass =
+    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500";
+
+  if (!section.children) {
+    return (
+      <li>
+        <Link
+          href={section.href}
+          onClick={onNavigate}
+          aria-current={isActiveLeaf ? "page" : undefined}
+          className={`${rowClass} ${
+            isActiveLeaf
+              ? "bg-indigo-50 text-indigo-700"
+              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+          }`}
+        >
+          <svg
+            aria-hidden="true"
+            className={`h-5 w-5 shrink-0 ${isActiveLeaf ? "text-indigo-600" : "text-gray-400"}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d={section.icon} />
+          </svg>
+          <span className="min-w-0 flex-1 text-left">{section.label}</span>
+        </Link>
+      </li>
+    );
+  }
 
   // A section containing the current page is marked even while collapsed, so
   // "where am I" survives the user collapsing it to look elsewhere. It stays
@@ -48,7 +92,7 @@ export default function SidebarSection({
         onClick={onToggle}
         aria-expanded={isOpen}
         aria-controls={panelId}
-        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+        className={`${rowClass} ${
           containsActive
             ? "text-gray-900"
             : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
