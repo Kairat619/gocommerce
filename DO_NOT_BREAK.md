@@ -132,6 +132,29 @@ Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`API_CONTRACT.md`](API_CON
 
 ## Admin
 
+- **The admin sidebar is an L1/L2 accordion**, one section open at a time. The
+  tree is data in `frontend/src/Layouts/adminNavigation.js`; the components
+  render it. Adding a module is a config entry, never a component edit
+- **The current route always wins over manual accordion state.** Navigating,
+  refreshing, a bookmark or browser back/forward re-opens the section owning the
+  page. The sidebar must never show a section open that does not contain the
+  current page
+- **Route matching is longest-prefix, with a slash boundary.** A nested route
+  belongs to its list page (`/admin/products/{id}/edit` → Catalog → Products).
+  Dashboard is `exact` — `/admin` is a prefix of every admin route and would
+  otherwise own the whole panel. `/admin/products` must not match
+  `/admin/products-archive`
+- **Quick Links shortcuts are not route owners.** New Product and New Coupon
+  point at pages Catalog and Promotion own; if they could win ownership,
+  `/admin/products/create` would collapse Catalog. They highlight, they never
+  set `aria-current`
+- **Every href in the navigation must be a route registered in
+  `cmd/server/main.go`.** There are no placeholder links. A module with no
+  backend gets no menu entry
+- `filterNavigation` is the permission seam and currently filters nothing —
+  there is one admin role and one `RequireAdmin` middleware over the whole tree.
+  The sidebar is not the security boundary; the server rejects the request
+  regardless
 - **Admin dashboard metric definitions.** Revenue everywhere on the dashboard is
   `SUM(orders.total) WHERE status <> 'cancelled'` — the same rule as
   `GetOrderSummary`, `GetTotalSales` and the customer lifetime-value card. The
