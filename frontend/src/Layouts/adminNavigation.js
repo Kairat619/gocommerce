@@ -54,6 +54,11 @@ const icons = {
 /**
  * The tree.
  *
+ * A SECTION is one of two shapes:
+ *
+ *   a group  — has `children`, renders as an expandable accordion header
+ *   a leaf    — has `href`, renders as a direct link with no chevron
+ *
  * Item fields:
  *   href      the route. Must exist in cmd/server/main.go.
  *   exact     this item owns only its exact path, never anything beneath it.
@@ -64,13 +69,27 @@ const icons = {
  */
 export const ADMIN_NAVIGATION = [
   {
+    // A LEAF SECTION: an L1 that is a destination, not a drawer.
+    //
+    // The dashboard is where the admin starts and the one page that is not
+    // "inside" anything, so filing it under a group was making the most-visited
+    // page the least reachable — two clicks and a mental step through a
+    // container it never belonged in. It renders as a direct link with no
+    // chevron.
+    //
+    // Exact, because /admin is a prefix of every admin route and would
+    // otherwise claim ownership of the entire panel.
+    id: "dashboard",
+    label: "Dashboard",
+    icon: icons.home,
+    href: "/admin",
+    exact: true,
+  },
+  {
     id: "quick-links",
     label: "Quick Links",
     icon: icons.bolt,
     children: [
-      // Dashboard is exact: /admin is a prefix of every admin route, so without
-      // this it would claim ownership of the entire panel.
-      { id: "dashboard", label: "Dashboard", href: "/admin", icon: icons.home, exact: true },
       {
         id: "new-product",
         label: "New Product",
@@ -164,11 +183,20 @@ export function filterNavigation(navigation, can) {
   if (typeof can !== "function") return navigation;
 
   return navigation
-    .map((section) => ({
-      ...section,
-      children: section.children.filter((item) => !item.permission || can(item.permission)),
-    }))
-    .filter((section) => section.children.length > 0);
+    .map((section) => {
+      // A leaf section is a single destination — it stands or falls on its own
+      // permission, and there is nothing beneath it to filter.
+      if (!section.children) return section;
+
+      return {
+        ...section,
+        children: section.children.filter((item) => !item.permission || can(item.permission)),
+      };
+    })
+    .filter((section) => {
+      if (!section.children) return !section.permission || can(section.permission);
+      return section.children.length > 0;
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -227,6 +255,16 @@ export function resolveActive(navigation, url) {
   let bestLength = -1;
 
   for (const section of navigation) {
+    // A leaf section owns its route directly. itemId is null, which is how the
+    // caller tells "the section itself is the page" from "a child of it is".
+    if (!section.children) {
+      if (matchesItem(section, path) && section.href.length > bestLength) {
+        bestLength = section.href.length;
+        best = { sectionId: section.id, itemId: null };
+      }
+      continue;
+    }
+
     for (const item of section.children) {
       if (item.shortcut) continue;
       if (!matchesItem(item, path)) continue;
