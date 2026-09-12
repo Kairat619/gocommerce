@@ -24,8 +24,32 @@ export function emptyVariant(overrides = {}) {
   };
 }
 
-export function buildInitialForm({ product, images, variants, attributes } = {}) {
+/**
+ * What a NEW product starts as.
+ *
+ * These come from Settings -> Catalogue via the `product_defaults` page prop.
+ * They used to be hardcoded here, next to a second copy as column defaults in
+ * the schema — so the form and the database each had an opinion about what a
+ * new product looked like, and only the form's was visible to the person
+ * filling it in.
+ *
+ * The literals below survive as the fallback for when the prop is absent, and
+ * are the same values the application shipped with.
+ *
+ * They apply to CREATE only. On the edit form, `source` is the product's own
+ * saved row and wins every field — changing a default must never rewrite a
+ * product that already exists.
+ */
+const BUILT_IN_DEFAULTS = {
+  is_active: true,
+  track_inventory: true,
+  allow_backorders: false,
+  low_stock_threshold: 0,
+};
+
+export function buildInitialForm({ product, images, variants, attributes, defaults } = {}) {
   const source = product || {};
+  const fallback = { ...BUILT_IN_DEFAULTS, ...(defaults || {}) };
 
   return {
     name: source.name || "",
@@ -43,16 +67,19 @@ export function buildInitialForm({ product, images, variants, attributes } = {})
     sku: source.sku || "",
     barcode: source.barcode || "",
     stock_quantity: source.stock_quantity != null ? String(source.stock_quantity) : "0",
-    low_stock_threshold: source.low_stock_threshold != null ? String(source.low_stock_threshold) : "0",
-    track_inventory: source.track_inventory != null ? source.track_inventory : true,
-    allow_backorders: source.allow_backorders || false,
+    low_stock_threshold:
+      source.low_stock_threshold != null
+        ? String(source.low_stock_threshold)
+        : String(fallback.low_stock_threshold),
+    track_inventory: source.track_inventory != null ? source.track_inventory : fallback.track_inventory,
+    allow_backorders: source.allow_backorders != null ? source.allow_backorders : fallback.allow_backorders,
 
     weight: source.weight || "",
     length: source.length || "",
     width: source.width || "",
     height: source.height || "",
 
-    is_active: source.is_active != null ? source.is_active : true,
+    is_active: source.is_active != null ? source.is_active : fallback.is_active,
     is_featured: source.is_featured || false,
     sort_order: source.sort_order != null ? String(source.sort_order) : "0",
 

@@ -838,19 +838,78 @@ settlement lives in the payment provider.
 
 ### Settings
 
+The configuration centre. An index of sections, then one page per section that
+saves only its own fields.
+
 `GET /admin/settings` → `Admin/Settings/Index`
 
+| Prop | Shape |
+|---|---|
+| `sections` | `{key, label, description, icon, editable, keywords[]}[]` |
+| `activity` | `{id, actor_name, setting_key, previous_value, new_value, created_at}[]` |
+| `store` | `{name, currency}` |
+
+`GET /admin/settings/{section}` → `Admin/Settings/Section`
+
+`section` is one of `general`, `localization`, `catalog`, `checkout`, `system`.
+An unknown key redirects to the index.
+
+| Prop | Shape |
+|---|---|
+| `sections` | as above |
+| `section` | the one being shown |
+| `settings` | the **whole** configuration (below) — every section receives all of it |
+| `activity` | audit entries for this section's fields only |
+| `system` | `system` section only: `{environment, app_url, database_host, session_state, session_detail, storage_state, storage_detail, storage_public, max_upload_mb, login_rate_limit}` |
+| `currencies` | `localization` only: `{code, label}[]` |
+| `timezone` | `localization` only: `{name, abbrev, offset, now}` |
+
+The `settings` prop:
+
 ```jsonc
-{ "settings": { "tax_rate_percent": 8.25,   // PERCENT here…
-                "shipping_cost": 9.99,
-                "free_shipping_threshold": 200 } }
+{ "tax_rate_percent": 8.25,      // PERCENT here…
+  "shipping_cost": 9.99,
+  "free_shipping_threshold": 200,
+  "store_name": "ShopNest",
+  "store_description": "",
+  "store_email": "",
+  "store_phone": "",
+  "currency": "USD",
+  "products_per_page": 12,
+  "default_product_active": true,
+  "default_track_inventory": true,
+  "default_allow_backorders": false,
+  "default_low_stock_threshold": 0 }
 ```
 
-`POST /admin/settings` fields: `tax_rate_percent`, `shipping_cost`,
-`free_shipping_threshold`. Validation error keys match the field names.
+`POST /admin/settings/{section}` accepts only that section's own fields;
+everything else keeps its stored value. Validation error keys match the field
+names. Posting to `system` is refused — it is read only.
 
 > ⚠️ `tax_rate_percent` is a **percentage** (8.25) while the `tax_rate` prop on
 > checkout and the product form is a **fraction** (0.0825). Never mix them.
+
+**Secrets are never props.** The `system` section reports *status* — `configured`,
+`warning`, `not_configured` — and never a value. Session keys, R2 credentials
+and the database password are read from the environment by `internal/config`,
+are not editable from the admin, and never appear in a prop or in the audit
+trail. `database_host` is the DSN's host with credentials stripped.
+
+### Store shared prop
+
+Every page now receives `store`:
+
+```jsonc
+{ "store": { "name": "ShopNest", "description": "", "email": "", "phone": "",
+             "currency": "USD" } }
+```
+
+`main.jsx` applies `name` and `currency` to `lib/brand.js` and `lib/money.js`
+before the first render, which is what makes `formatMoney(amount)` and
+`BRAND_NAME` follow the settings without their ~40 call sites changing.
+
+`appName` is unchanged and still sent: it is the deployment's name, not the
+shop's.
 
 ---
 
@@ -879,7 +938,7 @@ Safe to leave; do not "clean up" server-side, since that is a backend change.
 
 | Prop | Page | Note |
 |---|---|---|
-| `appName` | shared, every page | `"GoCommerce"`. The brand string `"ShopNest"` is instead hardcoded in Navbar, Footer and five `<Head title>` calls. Prefer wiring `appName` through. |
+| `appName` | shared, every page | `"GoCommerce"` — the **deployment's** name. The shop's name is now the `store.name` shared prop, set in Settings → General and consumed by Navbar, Footer, the theme and every `<Head title>`. The two are deliberately separate; this is no longer a discrepancy to resolve. |
 | `message` | `Pages/Welcome` | A welcome sentence React ignores |
 | `product.meta_title`, `product.meta_description` | `Products/Show` | Available for `<Head>` but unused |
 | `images[].sort_order`, `images[].is_primary` | `Products/Show` | Gallery ignores ordering |

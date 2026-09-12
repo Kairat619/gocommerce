@@ -11,8 +11,51 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createSettingsActivity = `-- name: CreateSettingsActivity :one
+
+INSERT INTO settings_activity (user_id, actor_name, setting_key, previous_value, new_value)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, user_id, actor_name, setting_key, previous_value, new_value, created_at
+`
+
+type CreateSettingsActivityParams struct {
+	UserID        pgtype.UUID `db:"user_id" json:"user_id"`
+	ActorName     string      `db:"actor_name" json:"actor_name"`
+	SettingKey    string      `db:"setting_key" json:"setting_key"`
+	PreviousValue string      `db:"previous_value" json:"previous_value"`
+	NewValue      string      `db:"new_value" json:"new_value"`
+}
+
+// ---------------------------------------------------------------------------
+// Settings audit trail
+//
+// Only the database-backed settings above ever appear here. Secrets live in
+// environment variables, are not editable from the admin, and so never reach
+// this table — see the note on settings_activity in migration 010.
+// ---------------------------------------------------------------------------
+func (q *Queries) CreateSettingsActivity(ctx context.Context, arg CreateSettingsActivityParams) (SettingsActivity, error) {
+	row := q.db.QueryRow(ctx, createSettingsActivity,
+		arg.UserID,
+		arg.ActorName,
+		arg.SettingKey,
+		arg.PreviousValue,
+		arg.NewValue,
+	)
+	var i SettingsActivity
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ActorName,
+		&i.SettingKey,
+		&i.PreviousValue,
+		&i.NewValue,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getStoreSettings = `-- name: GetStoreSettings :one
-SELECT id, tax_rate, shipping_cost, free_shipping_threshold, created_at, updated_at FROM store_settings WHERE id = 1
+SELECT id, tax_rate, shipping_cost, free_shipping_threshold, created_at, updated_at, store_name, store_description, store_email, store_phone, currency, products_per_page, default_product_active, default_track_inventory, default_allow_backorders, default_low_stock_threshold FROM store_settings WHERE id = 1
 `
 
 func (q *Queries) GetStoreSettings(ctx context.Context) (StoreSetting, error) {
@@ -25,28 +68,167 @@ func (q *Queries) GetStoreSettings(ctx context.Context) (StoreSetting, error) {
 		&i.FreeShippingThreshold,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StoreName,
+		&i.StoreDescription,
+		&i.StoreEmail,
+		&i.StorePhone,
+		&i.Currency,
+		&i.ProductsPerPage,
+		&i.DefaultProductActive,
+		&i.DefaultTrackInventory,
+		&i.DefaultAllowBackorders,
+		&i.DefaultLowStockThreshold,
 	)
 	return i, err
 }
 
+const listSettingsActivity = `-- name: ListSettingsActivity :many
+SELECT id, user_id, actor_name, setting_key, previous_value, new_value, created_at FROM settings_activity
+ORDER BY created_at DESC, id DESC
+LIMIT $1
+`
+
+// The store-wide configuration history, newest first.
+func (q *Queries) ListSettingsActivity(ctx context.Context, limit int32) ([]SettingsActivity, error) {
+	rows, err := q.db.Query(ctx, listSettingsActivity, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SettingsActivity{}
+	for rows.Next() {
+		var i SettingsActivity
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ActorName,
+			&i.SettingKey,
+			&i.PreviousValue,
+			&i.NewValue,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSettingsActivityForKeys = `-- name: ListSettingsActivityForKeys :many
+SELECT id, user_id, actor_name, setting_key, previous_value, new_value, created_at FROM settings_activity
+WHERE setting_key = ANY($1::text[])
+ORDER BY created_at DESC, id DESC
+LIMIT $2
+`
+
+type ListSettingsActivityForKeysParams struct {
+	SettingKeys []string `db:"setting_keys" json:"setting_keys"`
+	ResultLimit int32    `db:"result_limit" json:"result_limit"`
+}
+
+// The history of one section's fields, so each settings page can show what was
+// last changed there without loading the whole log.
+func (q *Queries) ListSettingsActivityForKeys(ctx context.Context, arg ListSettingsActivityForKeysParams) ([]SettingsActivity, error) {
+	rows, err := q.db.Query(ctx, listSettingsActivityForKeys, arg.SettingKeys, arg.ResultLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SettingsActivity{}
+	for rows.Next() {
+		var i SettingsActivity
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ActorName,
+			&i.SettingKey,
+			&i.PreviousValue,
+			&i.NewValue,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertStoreSettings = `-- name: UpsertStoreSettings :one
-INSERT INTO store_settings (id, tax_rate, shipping_cost, free_shipping_threshold)
-VALUES (1, $1, $2, $3)
+INSERT INTO store_settings (
+    id,
+    tax_rate, shipping_cost, free_shipping_threshold,
+    store_name, store_description, store_email, store_phone,
+    currency, products_per_page,
+    default_product_active, default_track_inventory,
+    default_allow_backorders, default_low_stock_threshold
+)
+VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 ON CONFLICT (id) DO UPDATE
-SET tax_rate = EXCLUDED.tax_rate,
-    shipping_cost = EXCLUDED.shipping_cost,
-    free_shipping_threshold = EXCLUDED.free_shipping_threshold
-RETURNING id, tax_rate, shipping_cost, free_shipping_threshold, created_at, updated_at
+SET tax_rate                    = EXCLUDED.tax_rate,
+    shipping_cost               = EXCLUDED.shipping_cost,
+    free_shipping_threshold     = EXCLUDED.free_shipping_threshold,
+    store_name                  = EXCLUDED.store_name,
+    store_description           = EXCLUDED.store_description,
+    store_email                 = EXCLUDED.store_email,
+    store_phone                 = EXCLUDED.store_phone,
+    currency                    = EXCLUDED.currency,
+    products_per_page           = EXCLUDED.products_per_page,
+    default_product_active      = EXCLUDED.default_product_active,
+    default_track_inventory     = EXCLUDED.default_track_inventory,
+    default_allow_backorders    = EXCLUDED.default_allow_backorders,
+    default_low_stock_threshold = EXCLUDED.default_low_stock_threshold
+RETURNING id, tax_rate, shipping_cost, free_shipping_threshold, created_at, updated_at, store_name, store_description, store_email, store_phone, currency, products_per_page, default_product_active, default_track_inventory, default_allow_backorders, default_low_stock_threshold
 `
 
 type UpsertStoreSettingsParams struct {
-	TaxRate               pgtype.Numeric `db:"tax_rate" json:"tax_rate"`
-	ShippingCost          pgtype.Numeric `db:"shipping_cost" json:"shipping_cost"`
-	FreeShippingThreshold pgtype.Numeric `db:"free_shipping_threshold" json:"free_shipping_threshold"`
+	TaxRate                  pgtype.Numeric `db:"tax_rate" json:"tax_rate"`
+	ShippingCost             pgtype.Numeric `db:"shipping_cost" json:"shipping_cost"`
+	FreeShippingThreshold    pgtype.Numeric `db:"free_shipping_threshold" json:"free_shipping_threshold"`
+	StoreName                string         `db:"store_name" json:"store_name"`
+	StoreDescription         string         `db:"store_description" json:"store_description"`
+	StoreEmail               string         `db:"store_email" json:"store_email"`
+	StorePhone               string         `db:"store_phone" json:"store_phone"`
+	Currency                 string         `db:"currency" json:"currency"`
+	ProductsPerPage          int32          `db:"products_per_page" json:"products_per_page"`
+	DefaultProductActive     bool           `db:"default_product_active" json:"default_product_active"`
+	DefaultTrackInventory    bool           `db:"default_track_inventory" json:"default_track_inventory"`
+	DefaultAllowBackorders   bool           `db:"default_allow_backorders" json:"default_allow_backorders"`
+	DefaultLowStockThreshold int32          `db:"default_low_stock_threshold" json:"default_low_stock_threshold"`
 }
 
+// The whole configuration is written at once.
+//
+// store_settings is a single row and the service always loads it, applies one
+// section's changes on top and writes the result back, so a partial write is
+// not a thing that can happen: saving the Catalogue page cannot clear the tax
+// rate because the tax rate is re-sent with the values it already had.
+//
+// The alternative — one UPDATE per section, touching only its own columns —
+// would need a statement per section and would still race two admins editing
+// different sections. Reading and writing the whole singleton makes last-write-
+// wins explicit rather than accidental.
 func (q *Queries) UpsertStoreSettings(ctx context.Context, arg UpsertStoreSettingsParams) (StoreSetting, error) {
-	row := q.db.QueryRow(ctx, upsertStoreSettings, arg.TaxRate, arg.ShippingCost, arg.FreeShippingThreshold)
+	row := q.db.QueryRow(ctx, upsertStoreSettings,
+		arg.TaxRate,
+		arg.ShippingCost,
+		arg.FreeShippingThreshold,
+		arg.StoreName,
+		arg.StoreDescription,
+		arg.StoreEmail,
+		arg.StorePhone,
+		arg.Currency,
+		arg.ProductsPerPage,
+		arg.DefaultProductActive,
+		arg.DefaultTrackInventory,
+		arg.DefaultAllowBackorders,
+		arg.DefaultLowStockThreshold,
+	)
 	var i StoreSetting
 	err := row.Scan(
 		&i.ID,
@@ -55,6 +237,16 @@ func (q *Queries) UpsertStoreSettings(ctx context.Context, arg UpsertStoreSettin
 		&i.FreeShippingThreshold,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StoreName,
+		&i.StoreDescription,
+		&i.StoreEmail,
+		&i.StorePhone,
+		&i.Currency,
+		&i.ProductsPerPage,
+		&i.DefaultProductActive,
+		&i.DefaultTrackInventory,
+		&i.DefaultAllowBackorders,
+		&i.DefaultLowStockThreshold,
 	)
 	return i, err
 }

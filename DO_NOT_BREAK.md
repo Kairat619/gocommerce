@@ -207,7 +207,40 @@ Companion documents: [`AI_RULES.md`](AI_RULES.md) · [`API_CONTRACT.md`](API_CON
   raw Postgres error
 - Order list with status filter; order detail; order status update
 - Customer list and customer detail
-- Store settings — tax rate, shipping cost, free-shipping threshold
+- **Store settings — the configuration centre.** Five sections at
+  `/admin/settings/{general,localization,catalog,checkout,system}`, each saving
+  only its own fields. Tax rate, shipping cost and free-shipping threshold keep
+  the exact behaviour and meaning they have always had, on the Tax & Shipping
+  page
+- **A settings save writes the whole singleton row.** The handler loads the
+  current configuration, applies one section's fields on top and saves the
+  result — which is what stops saving the Catalogue page from blanking the tax
+  rate. Never change a section handler to write only its own columns without
+  also solving that
+- **`system` is read only, permanently.** It reports status
+  (`configured` / `warning` / `not_configured`), never values. Session keys, R2
+  credentials and the database password stay in environment variables, are never
+  editable from the admin, never become props, and never reach the audit trail.
+  `database_host` is the DSN with credentials stripped
+- **Settings changes are audited.** Every change to a database-backed setting
+  writes a `settings_activity` row with the actor's name captured at write time,
+  as `order_activity` does. Audit writes are fire-and-forget: a failed log entry
+  must never fail a save that succeeded
+- **Product defaults apply to new products only.** `default_product_active`,
+  `default_track_inventory`, `default_allow_backorders` and
+  `default_low_stock_threshold` seed the create form. They must never be applied
+  to existing products — every product owns its values in its own columns
+- **Currency has exactly one source of truth**: `store_settings.currency`. It
+  reaches the admin as the `currency` page prop and the storefront as the
+  `store` shared prop, which `main.jsx` applies to `lib/money.js` before the
+  first render. The Go `storeCurrency` const and the JS `DEFAULT_CURRENCY` const
+  are gone — do not reintroduce either
+- **The store name is a setting**, not `BRAND_NAME`. `lib/brand.js` holds a
+  fallback that `main.jsx` overwrites from the `store` shared prop. Anything
+  evaluated at module scope must read `BRAND.name`, not the `BRAND_NAME` binding
+  — see the theme's `eyebrow` getter
+- **Catalogue page size is a setting** read by the product list, category pages
+  and collection pages through the one `catalogPerPage` helper
 
 ---
 

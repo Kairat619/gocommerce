@@ -8,6 +8,7 @@ import (
 	inertia "github.com/mayahiro/go-inertia"
 
 	"gocommerce/internal/db"
+	"gocommerce/internal/service"
 )
 
 // CollectionHandler serves the customer-facing collection pages. It mirrors
@@ -16,10 +17,11 @@ import (
 type CollectionHandler struct {
 	renderer *inertia.Renderer
 	queries  *db.Queries
+	settings *service.SettingsService
 }
 
-func NewCollectionHandler(renderer *inertia.Renderer, queries *db.Queries) *CollectionHandler {
-	return &CollectionHandler{renderer: renderer, queries: queries}
+func NewCollectionHandler(renderer *inertia.Renderer, queries *db.Queries, settings *service.SettingsService) *CollectionHandler {
+	return &CollectionHandler{renderer: renderer, queries: queries, settings: settings}
 }
 
 func (h *CollectionHandler) Index() http.HandlerFunc {
@@ -67,11 +69,12 @@ func (h *CollectionHandler) Show() http.HandlerFunc {
 		}
 
 		page := getPageParam(r)
-		offset := int32((page - 1) * productsPerPage)
+		perPage := catalogPerPage(r, h.settings)
+		offset := int32((page - 1) * perPage)
 
 		products, err := h.queries.ListActiveCollectionProducts(r.Context(), db.ListActiveCollectionProductsParams{
 			CollectionID: collection.ID,
-			Limit:        int32(productsPerPage),
+			Limit:        int32(perPage),
 			Offset:       offset,
 		})
 		if err != nil {
@@ -98,7 +101,7 @@ func (h *CollectionHandler) Show() http.HandlerFunc {
 			"products": serializeCollectionProducts(products),
 			"pagination": map[string]any{
 				"current": page,
-				"total":   totalPages(total, productsPerPage),
+				"total":   totalPages(total, perPage),
 			},
 		})
 	}

@@ -97,6 +97,7 @@ func main() {
 		Store:      store,
 		FlashStore: flashStore,
 		Cart:       cartService,
+		Settings:   settingsService,
 	}
 
 	// --- Inertia Renderer ---
@@ -118,9 +119,9 @@ func main() {
 	// --- Handlers ---
 	homeHandler := handler.Home(renderer, queries)
 	authHandler := handler.NewAuthHandler(renderer, authService)
-	productHandler := handler.NewProductHandler(renderer, queries)
-	categoryHandler := handler.NewCategoryHandler(renderer, queries)
-	collectionHandler := handler.NewCollectionHandler(renderer, queries)
+	productHandler := handler.NewProductHandler(renderer, queries, settingsService)
+	categoryHandler := handler.NewCategoryHandler(renderer, queries, settingsService)
+	collectionHandler := handler.NewCollectionHandler(renderer, queries, settingsService)
 	cartHandler := handler.NewCartHandler(renderer, cartService, queries, couponService)
 	checkoutHandler := handler.NewCheckoutHandler(renderer, orderService, settingsService, couponService)
 	accountHandler := handler.NewAccountHandler(renderer, orderService, authService)
@@ -128,8 +129,9 @@ func main() {
 	adminCouponHandler := handler.NewAdminCouponHandler(renderer, queries)
 	adminCollectionHandler := handler.NewAdminCollectionHandler(renderer, queries, pool)
 	adminAttributeHandler := handler.NewAdminAttributeHandler(renderer, queries, pool)
-	adminOrderHandler := handler.NewAdminOrderHandler(renderer, queries, pool)
-	adminDashboardHandler := handler.NewAdminDashboardHandler(renderer, queries)
+	adminOrderHandler := handler.NewAdminOrderHandler(renderer, queries, pool, settingsService)
+	adminDashboardHandler := handler.NewAdminDashboardHandler(renderer, queries, settingsService)
+	adminSettingsHandler := handler.NewAdminSettingsHandler(renderer, queries, settingsService, cfg)
 
 	// --- Media Storage (Cloudflare R2 when configured, local disk otherwise) ---
 	var mediaStore storage.Storage = storage.NewLocal()
@@ -294,8 +296,11 @@ func main() {
 		r.Post("/admin/coupons/{id}/delete", adminCouponHandler.Delete())
 
 		// Settings
-		r.Get("/admin/settings", adminHandler.ShowSettings())
-		r.Post("/admin/settings", adminHandler.UpdateSettings())
+		// The configuration centre: an index of sections, then one page per
+		// section that saves only its own fields.
+		r.Get("/admin/settings", adminSettingsHandler.Index())
+		r.Get("/admin/settings/{section}", adminSettingsHandler.Show())
+		r.Post("/admin/settings/{section}", adminSettingsHandler.Update())
 	})
 
 	// --- Server ---

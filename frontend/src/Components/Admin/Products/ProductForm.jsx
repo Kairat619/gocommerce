@@ -30,6 +30,7 @@ export default function ProductForm({
   brands = [],
   currency = "USD",
   taxRate = 0,
+  productDefaults,
 }) {
   const { errors: serverErrors = {} } = usePage().props;
 
@@ -39,6 +40,8 @@ export default function ProductForm({
       images: productImages,
       variants: productVariants,
       attributes: productAttributes,
+      // Only consulted when `product` is absent, i.e. on create.
+      defaults: productDefaults,
     }),
   );
   const [catalog, setCatalog] = useState(attributeCatalog);
