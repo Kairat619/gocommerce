@@ -3,6 +3,12 @@ import ValueProps from "./marketing/ValueProps";
 import CategoryShowcase from "./categories/CategoryShowcase";
 import FeaturedProducts from "./products/FeaturedProducts";
 import EditorialBand from "./editorial/EditorialBand";
+import PromoHero from "./marketplace/PromoHero";
+import CategoryRail from "./marketplace/CategoryRail";
+import ProductShelf from "./marketplace/ProductShelf";
+import PromoTrio from "./marketplace/PromoTrio";
+import ServiceHighlights from "./marketplace/ServiceHighlights";
+import SignupBanner from "./marketplace/SignupBanner";
 
 /**
  * The sections a theme may compose a page from.
@@ -34,6 +40,26 @@ export const sectionRegistry = {
   },
   EditorialBand: {
     component: EditorialBand,
+  },
+  PromoHero: {
+    component: PromoHero,
+  },
+  CategoryRail: {
+    component: CategoryRail,
+    select: (data) => ({ categories: data.categories }),
+  },
+  ProductShelf: {
+    component: ProductShelf,
+    select: (data) => ({ products: data.featured_products }),
+  },
+  PromoTrio: {
+    component: PromoTrio,
+  },
+  ServiceHighlights: {
+    component: ServiceHighlights,
+  },
+  SignupBanner: {
+    component: SignupBanner,
   },
 };
 
