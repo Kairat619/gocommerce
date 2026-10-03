@@ -7,6 +7,8 @@ import Textarea from "../../Components/UI/Textarea";
 import AddressCard from "../../Components/Commerce/AddressCard";
 import AddressFields from "../../Components/Commerce/AddressFields";
 import OrderSummary from "../../Components/Commerce/OrderSummary";
+import MarketplaceCheckout from "../../Components/Checkout/MarketplaceCheckout";
+import { useComponentVariant } from "../../theme/ThemeProvider";
 import { asCart, asList } from "../../lib/props";
 import { pageTitle } from "../../lib/brand";
 
@@ -27,6 +29,25 @@ const emptyBilling = {
   billing_postal_code: "",
   billing_country: "US",
 };
+
+const requiredShipping = [
+  "shipping_name",
+  "shipping_address",
+  "shipping_city",
+  "shipping_postal_code",
+  "shipping_country",
+];
+
+function shippingFromAddress(addr) {
+  return {
+    shipping_name: `${addr.first_name} ${addr.last_name}`.trim(),
+    shipping_address: [addr.address_line1, addr.address_line2].filter(Boolean).join(", "),
+    shipping_city: addr.city,
+    shipping_state: addr.state,
+    shipping_postal_code: addr.postal_code,
+    shipping_country: addr.country,
+  };
+}
 
 /** @param {import('../../types/pages').CheckoutIndexProps} props */
 export default function CheckoutIndex({
@@ -52,7 +73,18 @@ export default function CheckoutIndex({
     total = subtotal + subtotal * tax_rate + fallbackShipping,
   } = totals ?? {};
 
-  const [shippingAddress, setShippingAddress] = useState(emptyShipping);
+  const { layout } = useComponentVariant("CheckoutIndex", { layout: "classic" });
+  const marketplace = layout === "marketplace";
+
+  // The marketplace layout starts on the customer's default saved address;
+  // the classic one leaves the form blank until an address is picked.
+  const preferredAddress = marketplace
+    ? savedAddresses.find((addr) => addr.is_default) || savedAddresses[0]
+    : null;
+  const [addressChoice, setAddressChoice] = useState(preferredAddress?.id ?? "new");
+  const [shippingAddress, setShippingAddress] = useState(() =>
+    preferredAddress ? shippingFromAddress(preferredAddress) : emptyShipping
+  );
   const [billingAddress, setBillingAddress] = useState(emptyBilling);
   const [sameAsShipping, setSameAsShipping] = useState(true);
   const [notes, setNotes] = useState("");
@@ -91,6 +123,12 @@ export default function CheckoutIndex({
     );
   }
 
+  function chooseAddress(choice) {
+    setAddressChoice(choice);
+    const addr = savedAddresses.find((a) => a.id === choice);
+    setShippingAddress(addr ? shippingFromAddress(addr) : emptyShipping);
+  }
+
   if (items.length === 0) {
     return (
       <StoreLayout>
@@ -103,6 +141,56 @@ export default function CheckoutIndex({
             Continue Shopping
           </Button>
         </EmptyState>
+      </StoreLayout>
+    );
+  }
+
+  if (marketplace) {
+    const shippingDone = requiredShipping.every((field) => String(shippingAddress[field] || "").trim());
+    const billingDone =
+      sameAsShipping ||
+      ["billing_name", "billing_address", "billing_city", "billing_postal_code", "billing_country"].every(
+        (field) => String(billingAddress[field] || "").trim()
+      );
+    const progress = [shippingDone, shippingDone && billingDone];
+    const steps = ["Delivery Address", "Billing Details", "Review & Place"].map((label, index) => {
+      const done = index < progress.length && progress[index];
+      const current = !done && (index === 0 || progress[index - 1]);
+      return { label, state: done ? "done" : current ? "current" : "upcoming" };
+    });
+
+    return (
+      <StoreLayout full>
+        <Head title={pageTitle("Secure Checkout")} />
+        <MarketplaceCheckout
+          addresses={savedAddresses}
+          addressChoice={addressChoice}
+          onAddressChoice={chooseAddress}
+          steps={steps}
+          freeShippingThreshold={free_shipping_threshold}
+          onSubmit={handleSubmit}
+          form={{
+            shipping: shippingAddress,
+            setShipping: setShippingAddress,
+            billing: billingAddress,
+            setBilling: setBillingAddress,
+            sameAsShipping,
+            setSameAsShipping,
+            notes,
+            setNotes,
+          }}
+          summary={{
+            items,
+            subtotal,
+            discount,
+            tax,
+            taxRate: tax_rate,
+            shipping,
+            total,
+            coupon,
+            processing,
+          }}
+        />
       </StoreLayout>
     );
   }

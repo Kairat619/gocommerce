@@ -1,4 +1,5 @@
 import cn from "../../lib/cn";
+import { useControlLook } from "./controlStyles";
 
 /**
  * A labelled form control with its validation error and optional hint.
@@ -25,12 +26,11 @@ export default function Field({
   className = "",
   children,
 }) {
+  const look = useControlLook();
+
   return (
     <div className={cn(className)}>
-      <label
-        htmlFor={htmlFor}
-        className="mb-2 block text-label-sm font-semibold uppercase tracking-[0.1em] text-ink"
-      >
+      <label htmlFor={htmlFor} className={look.label}>
         {label}
       </label>
       {children}
