@@ -69,6 +69,7 @@
  *
  * @typedef {Object} CartIndexProps
  * @property {import('./commerce').Cart} cart also available as a shared prop
+ * @property {import('./commerce').AppliedCoupon|null} coupon re-validated on every render
  */
 
 /**
