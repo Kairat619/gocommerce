@@ -15,8 +15,43 @@ const aspects = {
   square: "aspect-square",
 };
 
+/**
+ * `editorial` is the borderless, image-led card; `tile` is the dense
+ * marketplace card — a white panel with the image inset on a tinted ground.
+ */
+const looks = {
+  editorial: {
+    root: "group block animate-fade-up",
+    media: "relative mb-5 overflow-hidden bg-surface-container",
+    image:
+      "h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105",
+    badges: "absolute left-4 top-4 flex flex-col gap-2",
+    discountTone: "accent",
+    discountLabel: "% Off",
+    body: "space-y-1.5",
+    title:
+      "font-serif text-body-lg text-ink transition-colors line-clamp-1 group-hover:text-accent",
+  },
+  tile: {
+    root: "group flex h-full flex-col rounded-xl bg-white p-3 shadow-sm transition-shadow animate-fade-up hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+    media: "relative mb-3 overflow-hidden rounded-lg bg-muted",
+    image:
+      "h-full w-full object-cover transition-transform duration-300 group-hover:scale-105",
+    badges: "absolute left-2 top-2 flex flex-col items-start gap-1",
+    discountTone: "danger",
+    discountLabel: "%",
+    body: "flex flex-1 flex-col gap-1",
+    title:
+      "text-[13px] font-semibold leading-snug text-ink transition-colors line-clamp-2 group-hover:text-accent",
+  },
+};
+
 export default function ProductCard({ product, index = 0 }) {
-  const { aspect } = useComponentVariant("ProductCard", { aspect: "portrait" });
+  const { aspect, look: lookName } = useComponentVariant("ProductCard", {
+    aspect: "portrait",
+    look: "editorial",
+  });
+  const look = looks[lookName] || looks.editorial;
   const inStock = isInStock(product);
   const compareAt = comparePrice(product);
   const discount = discountPercent(product);
@@ -35,12 +70,12 @@ export default function ProductCard({ product, index = 0 }) {
   return (
     <Link
       href={`/products/${product.slug}`}
-      className="group block animate-fade-up"
+      className={look.root}
       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
     >
       <div
         className={cn(
-          "relative mb-5 overflow-hidden bg-surface-container",
+          look.media,
           aspects[aspect] || aspects.portrait
         )}
       >
@@ -49,7 +84,7 @@ export default function ProductCard({ product, index = 0 }) {
             src={image}
             alt={product.name}
             loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            className={look.image}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-outline">
@@ -69,15 +104,16 @@ export default function ProductCard({ product, index = 0 }) {
           </div>
         )}
 
-        <div className="absolute left-4 top-4 flex flex-col gap-2">
+        <div className={look.badges}>
           {product.is_featured && (
             <Badge tone="neutral" size="sm">
               Exclusive
             </Badge>
           )}
           {discount > 0 && (
-            <Badge tone="accent" size="sm">
-              -{discount}% Off
+            <Badge tone={look.discountTone} size="sm">
+              -{discount}
+              {look.discountLabel}
             </Badge>
           )}
           {!inStock && (
@@ -111,18 +147,18 @@ export default function ProductCard({ product, index = 0 }) {
         )}
       </div>
 
-      <div className="space-y-1.5">
+      <div className={look.body}>
         <p className="text-label-sm uppercase tracking-[0.12em] text-outline">
           {product.category_name}
         </p>
-        <h3 className="font-serif text-body-lg text-ink transition-colors line-clamp-1 group-hover:text-accent">
+        <h3 className={look.title}>
           {product.name}
         </h3>
         <Price
           amount={product.price}
           compareAt={compareAt}
           size="md"
-          className="pt-1"
+          className={lookName === "tile" ? "mt-auto pt-1.5" : "pt-1"}
         />
       </div>
     </Link>

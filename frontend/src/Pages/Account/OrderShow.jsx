@@ -117,7 +117,7 @@ export default function AccountOrderShow({ order, items }) {
           </div>
 
           <div className="lg:col-span-1">
-            <div className="sticky top-24 space-y-6">
+            <div className="sticky top-32 space-y-6">
               <section className="border border-ink/10 bg-white p-6">
                 <h2 className="mb-5 text-label-lg font-semibold uppercase tracking-[0.1em] text-ink">
                   Summary

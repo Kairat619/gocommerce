@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 import { resolveTheme, ACTIVE_THEME } from "./themes";
 
 /**
- * Makes the active theme available to the tree, and applies its colours.
+ * Makes the active theme available to the tree, and applies its colours and
+ * font stacks.
  *
  * Colours are written to `document.documentElement` as the same custom
  * properties `theme/tokens/tokens.css` declares. That file stays the
@@ -21,13 +22,24 @@ export default function ThemeProvider({ name = ACTIVE_THEME, children }) {
   useEffect(() => {
     const root = document.documentElement;
 
+    const fonts = {
+      "--font-display": theme.typography?.display,
+      "--font-body": theme.typography?.body,
+    };
+
     Object.entries(theme.colors || {}).forEach(([token, channels]) => {
       root.style.setProperty(`--color-${token}`, channels);
+    });
+    Object.entries(fonts).forEach(([property, stack]) => {
+      if (stack) root.style.setProperty(property, stack);
     });
 
     return () => {
       Object.keys(theme.colors || {}).forEach((token) => {
         root.style.removeProperty(`--color-${token}`);
+      });
+      Object.keys(fonts).forEach((property) => {
+        root.style.removeProperty(property);
       });
     };
   }, [theme]);

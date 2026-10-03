@@ -1,5 +1,6 @@
 import defaultTheme from "./default";
 import luxuryTheme from "./luxury";
+import sharapatTheme from "./sharapat";
 
 /**
  * The installed themes.
@@ -14,10 +15,11 @@ import luxuryTheme from "./luxury";
 export const themes = {
   default: defaultTheme,
   luxury: luxuryTheme,
+  sharapat: sharapatTheme,
 };
 
 /** The theme the storefront currently renders. */
-export const ACTIVE_THEME = "luxury";
+export const ACTIVE_THEME = "sharapat";
 
 /** Look up a theme by name, falling back to the default rather than crashing. */
 export function resolveTheme(name = ACTIVE_THEME) {

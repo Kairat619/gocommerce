@@ -56,9 +56,14 @@ export const colors = {
   outline: token("outline"),
 };
 
+/**
+ * `font-serif` and `font-sans` read the theme's display and body stacks, so a
+ * theme can swap typefaces without touching a class name. The defaults live
+ * in `tokens.css`.
+ */
 export const fontFamily = {
-  serif: ['"Noto Serif"', "Georgia", "serif"],
-  sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+  serif: ["var(--font-display)"],
+  sans: ["var(--font-body)"],
 };
 
 export const fontSize = {

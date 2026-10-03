@@ -7,7 +7,7 @@
 
 @layer base {
   body {
-    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body);
     background-color: rgb(var(--color-surface));
     color: rgb(var(--color-ink));
     -webkit-font-smoothing: antialiased;
@@ -18,7 +18,17 @@
   h2,
   h3,
   h4 {
-    font-family: "Noto Serif", Georgia, serif;
+    font-family: var(--font-display);
+  }
+
+  /*
+   * The admin is application chrome, not storefront identity: it keeps the
+   * original font stacks whatever theme is active.
+   */
+  .admin-shell {
+    --font-display: "Noto Serif", Georgia, serif;
+    --font-body: Inter, system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body);
   }
 
   /*
