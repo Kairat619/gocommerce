@@ -84,6 +84,9 @@
  * @property {number} tax_rate
  * @property {number} shipping_cost
  * @property {number} free_shipping_threshold
+ * @property {{subtotal: number, discount: number, tax: number, shipping: number, total: number}} totals
+ *   service.ComputeTotals — what the order is charged
+ * @property {import('./commerce').AppliedCoupon|null} coupon
  */
 
 /**
