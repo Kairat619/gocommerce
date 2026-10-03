@@ -42,6 +42,8 @@ export default {
 
   components: {
     ProductCard: { aspect: "square", look: "tile" },
+    Navbar: { variant: "marketplace" },
+    Footer: { variant: "marketplace" },
   },
 
   homepage: [

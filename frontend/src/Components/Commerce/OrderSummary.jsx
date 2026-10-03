@@ -34,7 +34,7 @@ export default function OrderSummary({
   const remainingForFreeShipping = freeShippingThreshold - (subtotal - discount);
 
   return (
-    <div className="sticky top-24 border border-ink/10 bg-white p-6">
+    <div className="sticky top-32 border border-ink/10 bg-white p-6">
       <h2 className="text-label-lg font-semibold uppercase tracking-[0.1em] text-ink">
         Order Summary
       </h2>

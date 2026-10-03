@@ -27,4 +27,8 @@
   --color-muted: 243 244 245;
   --color-muted-foreground: 117 119 123;
   --color-outline: 117 119 123;
+
+  /* Font stacks — a theme's `typography` overwrites these at runtime */
+  --font-display: "Noto Serif", Georgia, serif;
+  --font-body: Inter, system-ui, -apple-system, sans-serif;
 }
