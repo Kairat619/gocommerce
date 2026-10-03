@@ -8,6 +8,8 @@ import ProductGallery from "../../Components/Commerce/ProductGallery";
 import ProductGrid from "../../Components/Commerce/ProductGrid";
 import QuantitySelector from "../../Components/Commerce/QuantitySelector";
 import VariantSelector from "../../Components/Commerce/VariantSelector";
+import MarketplaceProductDetail from "../../Components/Product/MarketplaceProductDetail";
+import { useComponentVariant } from "../../theme/ThemeProvider";
 import { comparePrice, discountPercent, isInStock } from "../../lib/product";
 import { pageTitle } from "../../lib/brand";
 import { asList } from "../../lib/props";
@@ -25,6 +27,8 @@ export default function ProductsShow({
 
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const { layout } = useComponentVariant("ProductsShow", { layout: "classic" });
 
   const inStock = isInStock(product);
   const displayPrice = selectedVariant?.price || product.price;
@@ -36,6 +40,50 @@ export default function ProductsShow({
       "/cart/add",
       { product_id: product.id, quantity: quantity.toString() },
       { preserveScroll: true }
+    );
+  }
+
+  // A successful add redirects to /cart; a failed one comes back here with a
+  // flash error. Only continue to checkout when the item really went in.
+  function buyNow() {
+    router.post(
+      "/cart/add",
+      { product_id: product.id, quantity: quantity.toString() },
+      {
+        preserveScroll: true,
+        onStart: () => setProcessing(true),
+        onFinish: () => setProcessing(false),
+        onSuccess: (page) => {
+          if (page.url.split("?")[0] === "/cart") router.visit("/checkout");
+        },
+      }
+    );
+  }
+
+  if (layout === "marketplace") {
+    return (
+      <StoreLayout full>
+        <Head title={pageTitle(product.name)} />
+        <MarketplaceProductDetail
+          product={product}
+          images={productImages}
+          related={related}
+          purchase={{
+            variants: productVariants,
+            selectedVariant,
+            onSelectVariant: setSelectedVariant,
+            displayPrice,
+            compareAt: selectedVariant ? null : compareAt,
+            discount: selectedVariant ? 0 : discount,
+            inStock,
+            quantity,
+            onQuantityChange: setQuantity,
+            onAddToCart: addToCart,
+            onBuyNow: buyNow,
+            processing,
+          }}
+        />
+      </StoreLayout>
     );
   }
 
