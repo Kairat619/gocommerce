@@ -138,6 +138,19 @@
  */
 
 /**
+ * The coupon applied to the session's cart, as `service.AppliedCoupon`
+ * serializes it. Re-evaluated on every render — never cache the amount.
+ *
+ * @typedef {Object} AppliedCoupon
+ * @property {string} coupon_id
+ * @property {string} code
+ * @property {string} description
+ * @property {string} discount_type
+ * @property {number} discount_amount  a FLOAT, like cart money
+ * @property {boolean} free_shipping
+ */
+
+/**
  * @typedef {"pending"|"confirmed"|"processing"|"shipped"|"delivered"|"cancelled"} OrderStatus
  */
 
