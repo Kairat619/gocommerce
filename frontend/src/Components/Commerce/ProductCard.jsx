@@ -72,13 +72,16 @@ export default function ProductCard({ product, index = 0 }) {
     look: "editorial",
   });
   const look = looks[lookName] || looks.editorial;
+  // Related products arrive without stock_quantity. Unknown stock is not "sold
+  // out": show no stock badge and leave the stock check to the product page.
+  const stockKnown = product?.stock_quantity !== undefined;
   const inStock = isInStock(product);
   const compareAt = comparePrice(product);
   const discount = discountPercent(product);
   const image = productImage(product);
 
   const stock = Number(product?.stock_quantity ?? 0);
-  const lowStock = inStock && stock <= LOW_STOCK;
+  const lowStock = stockKnown && inStock && stock <= LOW_STOCK;
 
   function quickAdd(e) {
     e.preventDefault();
@@ -139,7 +142,7 @@ export default function ProductCard({ product, index = 0 }) {
               {look.discountLabel}
             </Badge>
           )}
-          {!inStock && (
+          {stockKnown && !inStock && (
             <Badge tone="ink" size="sm">
               Sold Out
             </Badge>
@@ -167,7 +170,7 @@ export default function ProductCard({ product, index = 0 }) {
           <div className="mt-auto flex items-end justify-between gap-2 pt-1.5">
             <div className="min-w-0">
               <Price amount={product.price} compareAt={compareAt} size="md" className="flex-wrap gap-x-1.5" />
-              {(lowStock || !inStock) && (
+              {(lowStock || (stockKnown && !inStock)) && (
                 <p className="text-[11px] font-semibold text-orange-600">
                   {inStock ? `Only ${stock} left` : "Out of stock"}
                 </p>
