@@ -44,6 +44,7 @@ export default {
     ProductCard: { aspect: "square", look: "tile" },
     Navbar: { variant: "marketplace" },
     Footer: { variant: "marketplace" },
+    ProductsIndex: { layout: "marketplace" },
   },
 
   homepage: [

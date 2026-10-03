@@ -6,7 +6,10 @@ import Container from "../../Components/UI/Container";
 import EmptyState from "../../Components/UI/EmptyState";
 import ProductFilters from "../../Components/Commerce/ProductFilters";
 import ProductGrid from "../../Components/Commerce/ProductGrid";
+import MarketplaceCatalog from "../../Components/Catalog/MarketplaceCatalog";
+import { useComponentVariant } from "../../theme/ThemeProvider";
 import { pageTitle } from "../../lib/brand";
+import { formatMoney, hasAmount } from "../../lib/money";
 import { asList, asPagination } from "../../lib/props";
 import cn from "../../lib/cn";
 
@@ -28,6 +31,7 @@ export default function ProductsIndex({
   // the shopper scrolls past a full form before seeing a single product.
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { layout } = useComponentVariant("ProductsIndex", { layout: "classic" });
 
   const { data, setData } = useForm({
     q: search || "",
@@ -71,6 +75,13 @@ export default function ProductsIndex({
     visit({});
   }
 
+  // A price chip stands for both bounds, so removing it clears the pair.
+  function removeFilter(key) {
+    const cleared = key === "price" ? { min_price: "", max_price: "" } : { [key]: "" };
+    setData({ ...data, ...cleared });
+    visit(buildParams(cleared));
+  }
+
   const activeFilterCount = [search, category, min_price, max_price].filter(
     Boolean
   ).length;
@@ -82,6 +93,54 @@ export default function ProductsIndex({
     : activeCategory
     ? activeCategory.name
     : "All Products";
+
+  const priceLabel =
+    hasAmount(min_price) && hasAmount(max_price)
+      ? `${formatMoney(min_price)} – ${formatMoney(max_price)}`
+      : hasAmount(min_price)
+      ? `From ${formatMoney(min_price)}`
+      : hasAmount(max_price)
+      ? `Up to ${formatMoney(max_price)}`
+      : "";
+
+  const activeFilters = [
+    search && { key: "q", label: `Search: "${search}"` },
+    category && { key: "category", label: activeCategory?.name || category },
+    priceLabel && { key: "price", label: `Price: ${priceLabel}` },
+  ].filter(Boolean);
+
+  if (layout === "marketplace") {
+    return (
+      <StoreLayout full>
+        <Head title={pageTitle("Shop")} />
+        <MarketplaceCatalog
+          heading={heading}
+          breadcrumbs={
+            activeCategory
+              ? [
+                  { label: "Shop", href: "/products" },
+                  { label: activeCategory.name },
+                ]
+              : [{ label: "Shop" }]
+          }
+          items={items}
+          categories={categoryList}
+          pages={pages}
+          values={data}
+          onChange={setData}
+          onSelectCategory={selectCategory}
+          onSubmit={applyFilters}
+          onClear={clearFilters}
+          activeFilters={activeFilters}
+          onRemoveFilter={removeFilter}
+          loading={loading}
+          searchParams={buildParams()}
+          filtersOpen={filtersOpen}
+          onToggleFilters={() => setFiltersOpen(!filtersOpen)}
+        />
+      </StoreLayout>
+    );
+  }
 
   return (
     <StoreLayout full>

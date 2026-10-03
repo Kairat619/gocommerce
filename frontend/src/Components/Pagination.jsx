@@ -12,6 +12,8 @@ import cn from "../lib/cn";
  * @param {Object} props
  * @param {import('../types/commerce').Pagination} props.pagination
  * @param {Record<string, string>} [props.searchParams] filters to preserve
+ * @param {"classic"|"pill"} [props.look]  `pill` is the rounded marketplace style
+ * @param {string} [props.className]
  */
 const GAP = "gap";
 
@@ -36,10 +38,34 @@ function pageWindow(current, total, radius = 1) {
   return withGaps;
 }
 
-const btnBase =
-  "flex h-11 min-w-[2.75rem] items-center justify-center px-3 text-label-sm font-semibold uppercase tracking-[0.08em] transition-colors";
+const looks = {
+  classic: {
+    nav: "mt-12 flex flex-wrap items-center justify-center gap-1.5",
+    base: "flex h-11 min-w-[2.75rem] items-center justify-center px-3 text-label-sm font-semibold uppercase tracking-[0.08em] transition-colors",
+    step: "border border-ink/15 text-ink hover:border-ink hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink",
+    current: "bg-ink text-white",
+    page: "border border-ink/15 text-ink hover:border-ink hover:text-accent",
+    prev: "Prev",
+    next: "Next",
+  },
+  pill: {
+    nav: "flex flex-wrap items-center gap-1.5",
+    base: "flex h-9 min-w-[2.25rem] items-center justify-center rounded-lg px-2 text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+    step: "bg-white text-ink shadow-sm hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-ink",
+    current: "bg-accent text-white shadow-sm",
+    page: "text-ink hover:bg-white hover:shadow-sm",
+    prev: "‹",
+    next: "›",
+  },
+};
 
-export default function Pagination({ pagination, searchParams }) {
+export default function Pagination({
+  pagination,
+  searchParams,
+  look = "classic",
+  className = "",
+}) {
+  const style = looks[look] || looks.classic;
   const { current, total } = pagination;
 
   if (total <= 1) return null;
@@ -64,19 +90,16 @@ export default function Pagination({ pagination, searchParams }) {
   return (
     <nav
       aria-label="Pagination"
-      className="mt-12 flex flex-wrap items-center justify-center gap-1.5"
+      className={cn(style.nav, className)}
     >
       <button
         type="button"
         onClick={() => goTo(current - 1)}
         disabled={current <= 1}
         aria-label="Previous page"
-        className={cn(
-          btnBase,
-          "border border-ink/15 text-ink hover:border-ink hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink"
-        )}
+        className={cn(style.base, style.step)}
       >
-        Prev
+        {style.prev}
       </button>
 
       {items.map((item, index) =>
@@ -96,10 +119,8 @@ export default function Pagination({ pagination, searchParams }) {
             aria-current={item === current ? "page" : undefined}
             aria-label={`Page ${item}`}
             className={cn(
-              btnBase,
-              item === current
-                ? "bg-ink text-white"
-                : "border border-ink/15 text-ink hover:border-ink hover:text-accent"
+              style.base,
+              item === current ? style.current : style.page
             )}
           >
             {item}
@@ -112,12 +133,9 @@ export default function Pagination({ pagination, searchParams }) {
         onClick={() => goTo(current + 1)}
         disabled={current >= total}
         aria-label="Next page"
-        className={cn(
-          btnBase,
-          "border border-ink/15 text-ink hover:border-ink hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink"
-        )}
+        className={cn(style.base, style.step)}
       >
-        Next
+        {style.next}
       </button>
     </nav>
   );

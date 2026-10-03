@@ -29,8 +29,10 @@ const looks = {
     discountTone: "accent",
     discountLabel: "% Off",
     body: "space-y-1.5",
+    eyebrow: "text-label-sm uppercase tracking-[0.12em] text-outline",
     title:
       "font-serif text-body-lg text-ink transition-colors line-clamp-1 group-hover:text-accent",
+    inlineAdd: false,
   },
   tile: {
     root: "group flex h-full flex-col rounded-xl bg-white p-3 shadow-sm transition-shadow animate-fade-up hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
@@ -41,10 +43,28 @@ const looks = {
     discountTone: "danger",
     discountLabel: "%",
     body: "flex flex-1 flex-col gap-1",
+    eyebrow: "text-[11px] font-bold uppercase tracking-wider text-accent",
     title:
       "text-[13px] font-semibold leading-snug text-ink transition-colors line-clamp-2 group-hover:text-accent",
+    inlineAdd: true,
   },
 };
+
+/** At or below this many units, the tile card says how many are left. */
+const LOW_STOCK = 5;
+
+const plusIcon = (
+  <svg
+    className="h-5 w-5"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth="1.5"
+    stroke="currentColor"
+    aria-hidden="true"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+  </svg>
+);
 
 export default function ProductCard({ product, index = 0 }) {
   const { aspect, look: lookName } = useComponentVariant("ProductCard", {
@@ -56,6 +76,9 @@ export default function ProductCard({ product, index = 0 }) {
   const compareAt = comparePrice(product);
   const discount = discountPercent(product);
   const image = productImage(product);
+
+  const stock = Number(product?.stock_quantity ?? 0);
+  const lowStock = inStock && stock <= LOW_STOCK;
 
   function quickAdd(e) {
     e.preventDefault();
@@ -123,43 +146,47 @@ export default function ProductCard({ product, index = 0 }) {
           )}
         </div>
 
-        {inStock && (
+        {inStock && !look.inlineAdd && (
           <button
             type="button"
             onClick={quickAdd}
             aria-label={`Add ${product.name} to bag`}
             className="absolute bottom-4 right-4 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full bg-white text-ink opacity-0 shadow-sm transition-all duration-300 hover:bg-accent hover:text-white group-hover:translate-y-0 group-hover:opacity-100"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="1.5"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 4.5v15m7.5-7.5h-15"
-              />
-            </svg>
+            {plusIcon}
           </button>
         )}
       </div>
 
       <div className={look.body}>
-        <p className="text-label-sm uppercase tracking-[0.12em] text-outline">
-          {product.category_name}
-        </p>
+        <p className={look.eyebrow}>{product.category_name}</p>
         <h3 className={look.title}>
           {product.name}
         </h3>
-        <Price
-          amount={product.price}
-          compareAt={compareAt}
-          size="md"
-          className={lookName === "tile" ? "mt-auto pt-1.5" : "pt-1"}
-        />
+        {look.inlineAdd ? (
+          <div className="mt-auto flex items-end justify-between gap-2 pt-1.5">
+            <div className="min-w-0">
+              <Price amount={product.price} compareAt={compareAt} size="md" className="flex-wrap gap-x-1.5" />
+              {(lowStock || !inStock) && (
+                <p className="text-[11px] font-semibold text-orange-600">
+                  {inStock ? `Only ${stock} left` : "Out of stock"}
+                </p>
+              )}
+            </div>
+            {inStock && (
+              <button
+                type="button"
+                onClick={quickAdd}
+                aria-label={`Add ${product.name} to bag`}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent transition-colors hover:bg-accent hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                {plusIcon}
+              </button>
+            )}
+          </div>
+        ) : (
+          <Price amount={product.price} compareAt={compareAt} size="md" className="pt-1" />
+        )}
       </div>
     </Link>
   );

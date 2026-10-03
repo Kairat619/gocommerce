@@ -5,7 +5,9 @@ import cn from "../lib/cn";
  * Breadcrumb trail. Always prepends a "Home" crumb; pass the rest as `items`,
  * with the final entry omitting `href` to mark the current page.
  *
- * `tone="inverse"` is for trails sitting on a dark hero image.
+ * `tone="inverse"` is for trails sitting on a dark hero image. `look` picks
+ * the typographic treatment: uppercase with slashes, or the marketplace's
+ * sentence case with chevrons.
  */
 const tones = {
   default: { nav: "text-outline", separator: "text-outline", current: "text-ink" },
@@ -16,19 +18,26 @@ const tones = {
   },
 };
 
+const looks = {
+  classic: { nav: "text-label-sm uppercase tracking-[0.1em]", separator: "/" },
+  marketplace: { nav: "text-[13px]", separator: "›" },
+};
+
 export default function Breadcrumbs({
   items = [],
   tone = "default",
+  look = "classic",
   className = "mb-6",
 }) {
   if (items.length === 0) return null;
 
   const scale = tones[tone] || tones.default;
+  const style = looks[look] || looks.classic;
 
   return (
     <nav
       className={cn(
-        "text-label-sm uppercase tracking-[0.1em]",
+        style.nav,
         scale.nav,
         className
       )}
@@ -42,7 +51,9 @@ export default function Breadcrumbs({
         </li>
         {items.map((item, index) => (
           <li key={index} className="flex items-center gap-2">
-            <span className={scale.separator}>/</span>
+            <span aria-hidden="true" className={scale.separator}>
+              {style.separator}
+            </span>
             {item.href ? (
               <Link
                 href={item.href}
