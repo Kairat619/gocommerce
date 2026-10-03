@@ -46,6 +46,7 @@ export default {
     Footer: { variant: "marketplace" },
     ProductsIndex: { layout: "marketplace" },
     ProductsShow: { layout: "marketplace" },
+    CartIndex: { layout: "marketplace" },
   },
 
   homepage: [

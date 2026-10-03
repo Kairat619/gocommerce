@@ -4,13 +4,16 @@ import Button from "../../Components/UI/Button";
 import EmptyState from "../../Components/UI/EmptyState";
 import CartItem from "../../Components/Commerce/CartItem";
 import CouponField from "../../Components/Commerce/CouponField";
+import MarketplaceCart from "../../Components/Cart/MarketplaceCart";
+import { useComponentVariant } from "../../theme/ThemeProvider";
 import { formatMoney } from "../../lib/money";
 import { asCart } from "../../lib/props";
 import { pageTitle } from "../../lib/brand";
 
 /** @param {import('../../types/pages').CartIndexProps} props */
 export default function CartIndex({ cart, coupon = null }) {
-  const { items, total_price: totalPrice } = asCart(cart);
+  const { items, total_items: totalItems, total_price: totalPrice } = asCart(cart);
+  const { layout } = useComponentVariant("CartIndex", { layout: "classic" });
 
   // Sent by the server, already re-validated against this cart.
   const discount = coupon && !coupon.free_shipping ? Number(coupon.discount_amount) || 0 : 0;
@@ -35,6 +38,24 @@ export default function CartIndex({ cart, coupon = null }) {
     if (confirm("Are you sure you want to clear your cart?")) {
       router.post("/cart/clear", {}, { preserveScroll: true });
     }
+  }
+
+  if (layout === "marketplace") {
+    return (
+      <StoreLayout full>
+        <Head title={pageTitle("Shopping Cart")} />
+        <MarketplaceCart
+          items={items}
+          totalItems={totalItems}
+          totalPrice={totalPrice}
+          coupon={coupon}
+          discount={discount}
+          onQuantityChange={updateQuantity}
+          onRemove={removeItem}
+          onClear={clearCart}
+        />
+      </StoreLayout>
+    );
   }
 
   return (
