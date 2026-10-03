@@ -48,6 +48,8 @@ export default {
     ProductsShow: { layout: "marketplace" },
     CartIndex: { layout: "marketplace" },
     CheckoutIndex: { layout: "marketplace" },
+    CategoriesIndex: { layout: "marketplace" },
+    CategoriesShow: { layout: "marketplace" },
     FormControl: { look: "soft" },
   },
 

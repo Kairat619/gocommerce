@@ -1,5 +1,7 @@
 import { Head, Link } from "@inertiajs/react";
 import StoreLayout from "../../Components/StoreLayout";
+import CategoryDirectory from "../../Components/Catalog/CategoryDirectory";
+import { useComponentVariant } from "../../theme/ThemeProvider";
 import { excerpt } from "../../lib/html";
 import { categoryImage } from "../../lib/image";
 import { pageTitle } from "../../lib/brand";
@@ -8,6 +10,16 @@ import { asList } from "../../lib/props";
 /** @param {import('../../types/pages').CategoriesIndexProps} props */
 export default function CategoriesIndex({ categories }) {
   const items = asList(categories);
+  const { layout } = useComponentVariant("CategoriesIndex", { layout: "classic" });
+
+  if (layout === "marketplace") {
+    return (
+      <StoreLayout full>
+        <Head title={pageTitle("Categories")} />
+        <CategoryDirectory categories={items} />
+      </StoreLayout>
+    );
+  }
 
   return (
     <StoreLayout>

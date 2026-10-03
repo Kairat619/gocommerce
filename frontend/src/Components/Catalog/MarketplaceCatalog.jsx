@@ -5,6 +5,7 @@ import EmptyState from "../UI/EmptyState";
 import Icon from "../UI/Icon";
 import ProductGrid from "../Commerce/ProductGrid";
 import cn from "../../lib/cn";
+import { resultSummary } from "../../lib/catalog";
 import ActiveFilterBar from "./ActiveFilterBar";
 import CatalogFilterPanel from "./CatalogFilterPanel";
 
@@ -15,20 +16,9 @@ import CatalogFilterPanel from "./CatalogFilterPanel";
  * Purely presentational. Pages/Products/Index owns the filter state and every
  * visit, and hands this component the results plus callbacks.
  *
- * The server reports how many PAGES there are, not how many products, so the
- * result line counts this page's range rather than claiming a grand total.
+ * The result line comes from lib/catalog: the page size is a store setting the
+ * storefront is not sent, so it reports this page's count rather than a range.
  */
-const PER_PAGE = 12;
-
-function resultSummary(pages, count) {
-  if (pages.total <= 1) {
-    return `Showing ${count} product${count !== 1 ? "s" : ""}`;
-  }
-  const first = (pages.current - 1) * PER_PAGE + 1;
-  const last = first + count - 1;
-  return `Showing ${first}–${last} · Page ${pages.current} of ${pages.total}`;
-}
-
 export default function MarketplaceCatalog({
   heading,
   breadcrumbs,
