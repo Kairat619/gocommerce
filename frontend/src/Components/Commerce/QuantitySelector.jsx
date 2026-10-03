@@ -15,10 +15,16 @@ import cn from "../../lib/cn";
  * @param {number} [props.max]
  * @param {"sm"|"md"} [props.size]
  * @param {boolean} [props.editable]
+ * @param {"classic"|"rounded"} [props.look]
  */
 const sizes = {
   sm: { box: "h-10", control: "w-9 text-base", readout: "w-10 text-body-sm" },
   md: { box: "h-14", control: "w-12 text-lg", readout: "w-12 text-body-md" },
+};
+
+const looks = {
+  classic: { box: "border border-ink/20", divider: "border-ink/20" },
+  rounded: { box: "rounded-lg border border-ink/15 bg-white", divider: "border-ink/15" },
 };
 
 export default function QuantitySelector({
@@ -28,9 +34,11 @@ export default function QuantitySelector({
   max = Number.MAX_SAFE_INTEGER,
   size = "md",
   editable = false,
+  look = "classic",
   className = "",
 }) {
   const scale = sizes[size] || sizes.md;
+  const style = looks[look] || looks.classic;
   const clamp = (n) => Math.min(max, Math.max(min, n));
   const step = (delta) => onChange(clamp(value + delta));
 
@@ -41,7 +49,7 @@ export default function QuantitySelector({
 
   return (
     <div
-      className={cn("flex items-center border border-ink/20", scale.box, className)}
+      className={cn("flex items-center", style.box, scale.box, className)}
     >
       <button
         type="button"

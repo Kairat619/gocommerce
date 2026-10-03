@@ -45,6 +45,7 @@ export default {
     Navbar: { variant: "marketplace" },
     Footer: { variant: "marketplace" },
     ProductsIndex: { layout: "marketplace" },
+    ProductsShow: { layout: "marketplace" },
   },
 
   homepage: [
