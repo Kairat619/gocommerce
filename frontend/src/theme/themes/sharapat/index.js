@@ -47,6 +47,7 @@ export default {
     ProductsIndex: { layout: "marketplace" },
     ProductsShow: { layout: "marketplace" },
     CartIndex: { layout: "marketplace" },
+    FormControl: { look: "soft" },
   },
 
   homepage: [
