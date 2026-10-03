@@ -6,6 +6,8 @@ import Button from "../../Components/UI/Button";
 import Container from "../../Components/UI/Container";
 import EmptyState from "../../Components/UI/EmptyState";
 import Breadcrumbs from "../../Components/Breadcrumbs";
+import CategoryListing from "../../Components/Catalog/CategoryListing";
+import { useComponentVariant } from "../../theme/ThemeProvider";
 import { categoryImage } from "../../lib/image";
 import { pageTitle } from "../../lib/brand";
 import { asList, asPagination } from "../../lib/props";
@@ -14,17 +16,31 @@ import { asList, asPagination } from "../../lib/props";
 export default function CategoriesShow({ category, products, pagination }) {
   const items = asList(products);
   const pages = asPagination(pagination);
+  const { layout } = useComponentVariant("CategoriesShow", { layout: "classic" });
+
+  // meta_title / meta_description come from the admin category form's SEO
+  // card. `description` is not used as a fallback here — it is rich text from
+  // the editor, and raw HTML has no business in a meta tag.
+  const head = (
+    <Head title={pageTitle(category.meta_title || category.name)}>
+      {category.meta_description && (
+        <meta head-key="description" name="description" content={category.meta_description} />
+      )}
+    </Head>
+  );
+
+  if (layout === "marketplace") {
+    return (
+      <StoreLayout full>
+        {head}
+        <CategoryListing category={category} items={items} pages={pages} />
+      </StoreLayout>
+    );
+  }
 
   return (
     <StoreLayout full>
-      {/* meta_title / meta_description come from the admin category form's SEO
-          card. `description` is not used as a fallback here — it is rich text
-          from the editor, and raw HTML has no business in a meta tag. */}
-      <Head title={pageTitle(category.meta_title || category.name)}>
-        {category.meta_description && (
-          <meta head-key="description" name="description" content={category.meta_description} />
-        )}
-      </Head>
+      {head}
 
       {/* Category hero */}
       <section className="relative overflow-hidden bg-ink">
