@@ -201,7 +201,7 @@ React: `Welcome.jsx` uses `featured_products` and `categories` only.
 
 ### `GET /products` → `Pages/Products/Index`
 
-`internal/handler/products.go` · 12 per page
+`internal/handler/products.go` · page size is the Settings → "products per page" value (also used by `/categories/{slug}`)
 
 Query params: `?q=` `?category=` `?min_price=` `?max_price=` `?page=`
 
